@@ -54,7 +54,7 @@ USB_ClassInfo_HID_Device_t Keyboard_HID_Interface =
 };
 
 typedef enum {
-  TK = 0, SPACE_CADET = 1, SMBX = 2
+  TK = 1, SPACE_CADET = 2, SMBX = 3
 } Keyboard;
 
 typedef enum {
@@ -156,11 +156,30 @@ static void SMBX_Scan(void);
 #define SMBX_KBDNEXT (1 << 5)
 #define SMBX_KBDSCAN (1 << 6)
 
+#ifdef LMKBD_SWITCH
+#define SWITCH_PORT PORTF
+#define SWITCH_DDR DDRF
+#define SWITCH_PIN PINF
+#define SWITCH_MASK 0x03
+#endif
+
 static void LMKBD_Init(void)
 {
   int i;
 
-  CurrentKeyboard = SMBX;
+#ifdef LMKBD_SWITCH
+#ifdef LMKBD
+#error LMKBD must not be defined if switch is enabled
+#endif
+  SWITCH_PORT |= SWITCH_MASK;   // Enable pullups.
+  CurrentKeyboard = (Keyboard)(SWITCH_PIN & SWITCH_MASK);
+#else
+#ifndef LMKBD
+#error LMKBD must be defined as keyboard type in local.mk
+#endif
+  CurrentKeyboard = LMKBD;
+#endif
+
   CurrentMode = EMACS;
 
   CurrentShifts = 0;

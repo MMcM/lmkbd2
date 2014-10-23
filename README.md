@@ -28,3 +28,7 @@ except the keyboard connector itself, an RJ12 jack for Symbolics keyboards and a
 | SMBX_KBDSCAN | PB6 | D10     | white      |
 | TK_KBDIN     | PD0 | D3      |            |
 | TK_KBDCLK    | PD1 | D2      |            |
+
+An two-pole switch can be wired between PF<0:1> (Arduino D23 & D22)
+and GND to allow hardware selection of the keyboard type.
+
