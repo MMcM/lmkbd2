@@ -6,16 +6,28 @@ All the heavy lifting is done by the
 [LUFA](http://www.fourwalledcubicle.com/LUFA.php) library. The driver is designed for
 an ATmega32U4, but probably works with anything similar that LUFA supports.
 
+## Supported Keyboards ##
+
+* Symbolics keyboard with 6-pin RJ12 modular cable.
+* MIT / Symbolics / LMI Space Cadet keyboard with 34-pin IDC ribbon cable.
+* MIT Knight keyboard with Amphenol 9-pin mini-hex cable (probably).
+
+The code includes key codes for the TI Explorer, but I do not have information on the
+encoding protocol or access to an example. Feel free to submit an issue if you do and
+want it supported.
+
 ## Hardware ##
 
 There are a number of readily available boards which have all the required components
-except the keyboard connector itself, an RJ12 jack for Symbolics keyboards and a
-34-connector IDC header for the Space Cadet.
+except the keyboard connector itself.
 
-* [Arduino Micro](http://arduino.cc/en/Main/arduinoBoardMicro).
+* Arduino [Leonardo](http://arduino.cc/en/Main/arduinoBoardLeonardo) / [Micro](http://arduino.cc/en/Main/arduinoBoardMicro).
 * [Sparkfun Pro Micro](https://www.sparkfun.com/products/12640).
 * [Adafruit Atmega32u4 breakout](http://www.ladyada.net/products/atmega32u4breakout/).
 * [Teensy 2.0](https://www.pjrc.com/teensy/index.html).
+
+Boards with an ICSP can be programmed through that or the using the AVR109 protocol
+CDC class bootloader that the Arduino IDE uses.
 
 ### Connections ###
 
