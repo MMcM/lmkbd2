@@ -40,10 +40,52 @@
  */
 const USB_Descriptor_HIDReport_Datatype_t PROGMEM KeyboardReport[] =
 {
+#if 0
   /* Use the HID class driver's standard Keyboard report.
    *   Max simultaneous keys: 6
    */
   HID_DESCRIPTOR_KEYBOARD(6)
+#else
+  HID_RI_USAGE_PAGE(8, 0x01),
+  HID_RI_USAGE(8, 0x06),
+  HID_RI_COLLECTION(8, 0x01),
+  HID_RI_USAGE_PAGE(8, 0x07),
+  HID_RI_USAGE_MINIMUM(8, 0xE0),
+  HID_RI_USAGE_MAXIMUM(8, 0xE7),
+  HID_RI_LOGICAL_MINIMUM(8, 0x00),
+  HID_RI_LOGICAL_MAXIMUM(8, 0x01),
+  HID_RI_REPORT_SIZE(8, 0x01),
+  HID_RI_REPORT_COUNT(8, 0x08),
+  HID_RI_INPUT(8, HID_IOF_DATA | HID_IOF_VARIABLE | HID_IOF_ABSOLUTE),
+  HID_RI_REPORT_COUNT(8, 0x01),
+  HID_RI_REPORT_SIZE(8, 0x08),
+  HID_RI_INPUT(8, HID_IOF_CONSTANT),
+  HID_RI_USAGE_PAGE(8, 0x08),
+  HID_RI_USAGE_MINIMUM(8, 0x01),
+  HID_RI_USAGE_MAXIMUM(8, 0x05),
+  HID_RI_REPORT_COUNT(8, 0x05),
+  HID_RI_REPORT_SIZE(8, 0x01),
+  HID_RI_OUTPUT(8, HID_IOF_DATA | HID_IOF_VARIABLE | HID_IOF_ABSOLUTE | HID_IOF_NON_VOLATILE),
+  HID_RI_REPORT_COUNT(8, 0x01),
+  HID_RI_REPORT_SIZE(8, 0x03),
+  HID_RI_OUTPUT(8, HID_IOF_CONSTANT),
+  HID_RI_LOGICAL_MINIMUM(8, 0x00),
+  HID_RI_LOGICAL_MAXIMUM(8, 0xFF),
+  HID_RI_USAGE_PAGE(8, 0x07),
+  HID_RI_USAGE_MINIMUM(8, 0x00),
+  HID_RI_USAGE_MAXIMUM(8, 0xFF),
+  HID_RI_REPORT_COUNT(8, 6),
+  HID_RI_REPORT_SIZE(8, 0x08),
+  HID_RI_INPUT(8, HID_IOF_DATA | HID_IOF_ARRAY | HID_IOF_ABSOLUTE),
+  HID_RI_USAGE_PAGE(16, 0xFF00),
+  HID_RI_REPORT_COUNT(8, 0x01),
+  HID_RI_REPORT_SIZE(8, 0x08),
+  HID_RI_USAGE(8, 0x01),
+  HID_RI_FEATURE(8, HID_IOF_CONSTANT | HID_IOF_VARIABLE | HID_IOF_ABSOLUTE),
+  HID_RI_USAGE(8, 0x02),
+  HID_RI_FEATURE(8, HID_IOF_DATA | HID_IOF_VARIABLE | HID_IOF_ABSOLUTE),
+  HID_RI_END_COLLECTION(0)
+#endif
 };
 
 /** Device descriptor structure. This descriptor, located in FLASH memory, describes the overall
@@ -149,7 +191,7 @@ const USB_Descriptor_String_t PROGMEM ManufacturerString = USB_STRING_DESCRIPTOR
  *  and is read out upon request by the host when the appropriate string ID is requested, listed in the Device
  *  Descriptor.
  */
-const USB_Descriptor_String_t PROGMEM ProductString = USB_STRING_DESCRIPTOR(L"Lisp Machine Keyboard");
+const USB_Descriptor_String_t PROGMEM ProductString = USB_STRING_DESCRIPTOR(L"LispM Keyboard II");
 
 /** This function is called by the library when in device mode, and must be overridden (see library "USB Descriptors"
  *  documentation) by the application code so that the address and size of a requested descriptor can be given

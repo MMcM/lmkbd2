@@ -25,7 +25,7 @@
 
 /** \file
  *
- * Keyboard driver. Initialized hardware and converts scanned input to USB events.
+ * Keyboard driver. Initializes hardware and converts scanned input to USB events.
  */
 
 #include "Keyboard.h"
@@ -144,6 +144,31 @@ static void SMBX_Scan(void);
 
 #define LOW 0
 #define HIGH 1
+
+// Micro has RX & TX LEDs and user LED as LED3 (D13); other boards only have LED1.
+#if LEDS_LED3 != 0
+#define KEYDOWN_LED LEDS_LED3
+#else
+#define KEYDOWN_LED LEDS_LED1
+#endif
+
+#ifdef EXTERNAL_LEDS
+#define XLEDS_PORT PORTF
+#define XLEDS_DDR DDRF
+#define XLEDS_NUMLOCK (1 << 7)
+#define XLEDS_CAPSLOCK (1 << 5)
+#define XLEDS_SCROLLLOCK (1 << 6)
+#define XLEDS_OTHER (1 << 4)
+#define XLEDS_ALL 0xF0
+#endif
+
+#ifdef LMKBD_SWITCH
+#define SWITCH_PORT PORTF
+#define SWITCH_DDR DDRF
+#define SWITCH_PIN PINF
+#define SWITCH_MASK 0x03
+#endif
+
 #define TK_DDR DDRD
 #define TK_PIN PIND
 #define TK_PORT PORTD
@@ -156,20 +181,19 @@ static void SMBX_Scan(void);
 #define SMBX_KBDNEXT (1 << 5)
 #define SMBX_KBDSCAN (1 << 6)
 
-#ifdef LMKBD_SWITCH
-#define SWITCH_PORT PORTF
-#define SWITCH_DDR DDRF
-#define SWITCH_PIN PINF
-#define SWITCH_MASK 0x03
-#endif
-
 static void LMKBD_Init(void)
 {
   int i;
 
+#ifdef EXTERNAL_LEDS
+  XLEDS_DDR |= XLEDS_ALL;
+  // Flash all LEDs on until we receive a host report with their proper state.
+  XLEDS_PORT |= XLEDS_ALL;
+#endif
+
 #ifdef LMKBD_SWITCH
 #ifdef LMKBD
-#error LMKBD must not be defined if switch is enabled
+#error LMKBD must not be defined if LMKBD_SWITCH is enabled in local.mk
 #endif
   SWITCH_PORT |= SWITCH_MASK;   // Enable pullups.
   CurrentKeyboard = (Keyboard)(SWITCH_PIN & SWITCH_MASK);
@@ -213,11 +237,18 @@ static void LMKBD_Task(void)
     SMBX_Scan();
     break;
   }
+
+  if (NKeysDown > 0) {
+      LEDs_TurnOnLEDs(KEYDOWN_LED);
+  }
+  else {
+      LEDs_TurnOffLEDs(KEYDOWN_LED);
+  }
 }
 
 static void KeyDown(/*PROGMEM*/ const KeyInfo *key)
 {
-  HidUsageID hidUsageID = pgm_read_byte(&key->hidUsageID);
+  HidUsageID usage = pgm_read_byte(&key->hidUsageID);
   KeyShift shift = pgm_read_byte(&key->shift);
   PGM_P keysym = pgm_read_ptr(&key->keysym);
   
@@ -240,7 +271,7 @@ static void KeyDown(/*PROGMEM*/ const KeyInfo *key)
       }
     }
     if (NKeysDown < sizeof(KeysDown)) {
-      KeysDown[NKeysDown++] = hidUsageID;
+      KeysDown[NKeysDown++] = usage;
     }
     if (CurrentShifts & (SHIFT(L_SUPER) | SHIFT(R_SUPER) | 
                          SHIFT(L_HYPER) | SHIFT(R_HYPER))) {
@@ -264,7 +295,7 @@ static void KeyDown(/*PROGMEM*/ const KeyInfo *key)
         break;                  // No need for usage entry.
     }
     if (NKeysDown < sizeof(KeysDown)) {
-      KeysDown[NKeysDown++] = hidUsageID;
+      KeysDown[NKeysDown++] = usage;
     }
     break;
   }
@@ -272,14 +303,14 @@ static void KeyDown(/*PROGMEM*/ const KeyInfo *key)
 
 static void KeyUp(/*PROGMEM*/ const KeyInfo *key)
 {
-  HidUsageID usage;
+  HidUsageID usage = pgm_read_byte(&key->hidUsageID);
+  KeyShift shift = pgm_read_byte(&key->shift);
   int i;
 
-  if (key->shift != NONE) {
-    CurrentShifts &= ~SHIFT(key->shift);
+  if (shift != NONE) {
+    CurrentShifts &= ~SHIFT(shift);
   }
 
-  usage = key->hidUsageID;
   for (i = 0; i < NKeysDown; i++) {
     if (KeysDown[i] == usage) {
       NKeysDown--;
@@ -312,7 +343,7 @@ static void CreateEmacsEvent(EmacsEvent *event, uint32_t shifts, PGM_P keysym)
   }
   else {
     PGM_P chars;
-    unsigned char nchars;
+    uint8_t nchars;
     int n;
     char ch;
 
@@ -622,10 +653,10 @@ static KeyInfo TKKeys[64] PROGMEM = {
   PC_KEY(77, HID_KEYBOARD_SC_SPACE, NULL) /* space */
 };
 
-static void TKShiftKeys(unsigned short mask)
+static void TKShiftKeys(uint16_t mask)
 {
 #define UPDATE_SHIFTS(n,s)              \
-  if (mask & ((unsigned short)1 << n))  \
+  if (mask & ((uint16_t)1 << n))  \
     CurrentShifts |= SHIFT(s);          \
   else                                  \
     CurrentShifts &= ~SHIFT(s);
@@ -861,10 +892,12 @@ static void SpaceCadetAllKeysUp(uint16_t mask)
     NKeysDown = 0;
   }
   else {
-#define UPDATE_SHIFTS_LR(n,s)                   \
-    if (mask & ((unsigned short)1 << n))        \
-      CurrentShifts |= SHIFT(L_##s);            \
-    else                                        \
+#define UPDATE_SHIFTS_LR(n,s)                                   \
+    if (mask & ((uint16_t)1 << n)) {                            \
+      if ((CurrentShifts & (SHIFT(L_##s) | SHIFT(R_##s))) == 0) \
+        CurrentShifts |= SHIFT(L_##s);                          \
+    }                                                           \
+    else                                                        \
       CurrentShifts &= ~(SHIFT(L_##s) | SHIFT(R_##s));
 
     UPDATE_SHIFTS_LR(0,SHIFT);
@@ -931,7 +964,7 @@ static void MIT_Read(void)
   int i,j;
 
   for (i = 0; i < 3; i++) {
-    unsigned char code = 0;
+    uint8_t code = 0;
     for (j = 0; j < 8; j++) {
       TK_PORT &= ~TK_KBDCLK;    // Clock low.
       _delay_us(20);            // 50kHz.
@@ -953,12 +986,12 @@ static void MIT_Read(void)
         KeyDown(&SpaceCadetKeys[tkBits[0]]);
       break;
     case 0x80:
-      SpaceCadetAllKeysUp(tkBits[0] | (((unsigned short)tkBits[1] & 0x07) << 8));
+      SpaceCadetAllKeysUp(tkBits[0] | (((uint16_t)tkBits[1] & 0x07) << 8));
       break;
     }
     break;
   case 0xFF:
-    TKShiftKeys((tkBits[0] & 0xC0) | ((unsigned short)tkBits[1] << 8));
+    TKShiftKeys((tkBits[0] & 0xC0) | ((uint16_t)tkBits[1] << 8));
     NKeysDown = 0;              // There are no up transitions.
     KeyDown(&TKKeys[tkBits[0] & 0x3F]);
     break;
@@ -988,7 +1021,7 @@ KEYSYM(KS_SM_165, "clearinput");
 KEYSYM(KS_SM_166, "suspend");
 KEYSYM(KS_SM_167, "resume");
 
-static KeyInfo SMBXKeyInfos[128] PROGMEM = {
+static KeyInfo SMBXKeys[128] PROGMEM = {
   NO_KEY(000),
   NO_KEY(001),
   LISP_KEY(002, HID_KEYBOARD_SC_OPER, KS_SM_002), /* local */
@@ -1139,7 +1172,7 @@ static void SMBX_Scan(void)
   SMBX_PORT &= ~SMBX_KBDSCAN;
   SMBX_PORT |= SMBX_KBDSCAN;
   for (i = 0; i < 16; i++) {
-    unsigned char code = 0;
+    uint8_t code = 0;
     for (j = 0; j < 8; j++) {
       SMBX_PORT &= ~SMBX_KBDNEXT;
       SMBX_PORT |= SMBX_KBDNEXT;
@@ -1151,7 +1184,7 @@ static void SMBX_Scan(void)
   }
 
   for (i = 0; i < 16; i++) {
-    unsigned char keys, change;
+    uint8_t keys, change;
     keys = smbxNKeyStates[i];
     change = keys ^ smbxKeyStates[i];
     if (change == 0) continue;
@@ -1160,13 +1193,32 @@ static void SMBX_Scan(void)
       if (change & (1 << j)) {
         int code = (i * 8) + j;
         if (keys & (1 << j)) {
-          KeyDown(&SMBXKeyInfos[code]);
+          KeyDown(&SMBXKeys[code]);
         }
         else {
-          KeyUp(&SMBXKeyInfos[code]);
+          KeyUp(&SMBXKeys[code]);
         }
       }
     }    
+  }
+}
+
+/*** Device Application ***/
+
+/** Main program entry point. This routine contains the overall program flow, including initial
+ *  setup of all components and the main program loop.
+ */
+int main(void)
+{
+  SetupHardware();
+
+  LEDs_SetAllLEDs(LEDMASK_USB_NOTREADY);
+  GlobalInterruptEnable();
+
+  while (true) {
+    LMKBD_Task();
+    HID_Device_USBTask(&Keyboard_HID_Interface);
+    USB_USBTask();
   }
 }
 
@@ -1256,8 +1308,11 @@ bool CALLBACK_HID_Device_CreateHIDReport(USB_ClassInfo_HID_Device_t* const HIDIn
       USB_KeyboardReport_Data_t* KeyboardReport = (USB_KeyboardReport_Data_t*)ReportData;
       switch (CurrentMode) {
       case EMACS:
-        AddEmacsReport(KeyboardReport);
-        break;
+        if (EmacsBufferedCount > 0) {
+          AddEmacsReport(KeyboardReport);
+          break;
+        }
+        /* else falls through */
       default:
         AddKeyReport(KeyboardReport);
         break;
@@ -1266,6 +1321,13 @@ bool CALLBACK_HID_Device_CreateHIDReport(USB_ClassInfo_HID_Device_t* const HIDIn
     }
     return false;
   case HID_REPORT_ITEM_Feature:
+    {
+      uint8_t* FeatureReport = (uint8_t*)ReportData;
+      FeatureReport[0] = (uint8_t)CurrentKeyboard;
+      FeatureReport[1] = (uint8_t)CurrentMode;
+      *ReportSize = 2;
+    }
+    return true;
   default:
     *ReportSize = 0;
     return false;
@@ -1288,38 +1350,29 @@ void CALLBACK_HID_Device_ProcessHIDReport(USB_ClassInfo_HID_Device_t* const HIDI
 {
   switch (ReportType) {
   case HID_REPORT_ITEM_Out:
-      {
-          uint8_t* LEDReport = (uint8_t*)ReportData;
-          uint8_t  LEDMask   = LEDS_NO_LEDS;
+    if (ReportSize > 0) {
+#ifdef EXTERNAL_LEDS
+      uint8_t* LEDReport = (uint8_t*)ReportData;
+      uint8_t  LEDMask   = 0;
 
-          if (*LEDReport & HID_KEYBOARD_LED_NUMLOCK)
-              LEDMask |= LEDS_LED1;
-          if (*LEDReport & HID_KEYBOARD_LED_CAPSLOCK)
-              LEDMask |= LEDS_LED3;
-          if (*LEDReport & HID_KEYBOARD_LED_SCROLLLOCK)
-              LEDMask |= LEDS_LED4;
+      if (*LEDReport & HID_KEYBOARD_LED_NUMLOCK)
+        LEDMask |= XLEDS_NUMLOCK;
+      if (*LEDReport & HID_KEYBOARD_LED_CAPSLOCK)
+        LEDMask |= XLEDS_CAPSLOCK;
+      if (*LEDReport & HID_KEYBOARD_LED_SCROLLLOCK)
+        LEDMask |= XLEDS_SCROLLLOCK;
+      if (*LEDReport & (HID_KEYBOARD_LED_COMPOSE|HID_KEYBOARD_LED_KANA))
+        LEDMask |= XLEDS_OTHER;
 
-          LEDs_SetAllLEDs(LEDMask);
+      XLEDS_PORT |= (XLEDS_PORT & ~XLEDS_ALL) | LEDMask;
+#endif
       }
       break;
   case HID_REPORT_ITEM_Feature:
+    if (ReportSize > 1) {
+      uint8_t* FeatureReport = (uint8_t*)ReportData;
+      CurrentMode = (TranslationMode)FeatureReport[1];
+    }
     break;
-  }
-}
-
-/** Main program entry point. This routine contains the overall program flow, including initial
- *  setup of all components and the main program loop.
- */
-int main(void)
-{
-  SetupHardware();
-
-  LEDs_SetAllLEDs(LEDMASK_USB_NOTREADY);
-  GlobalInterruptEnable();
-
-  while (true) {
-    LMKBD_Task();
-    HID_Device_USBTask(&Keyboard_HID_Interface);
-    USB_USBTask();
   }
 }
