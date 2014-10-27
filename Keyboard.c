@@ -1156,12 +1156,24 @@ static KeyInfo SMBXKeys[128] PROGMEM = {
 
 static uint8_t smbxKeyStates[16], smbxNKeyStates[16];
 
+static inline void SMBX_Strobe(uint8_t pin)
+{
+  SMBX_PORT &= ~pin;
+  SMBX_PORT |= pin;
+#if 0
+  __asm__ __volatile__ ("nop");
+#else
+  _delay_us(5);
+#endif
+}
+
 static void SMBX_Init(void)
 {
   int i;
 
+  // Set output pins and enable pull-up on input so disconnected reads HIGH (all zeros).
   SMBX_DDR |= (SMBX_KBDSCAN | SMBX_KBDNEXT);
-  SMBX_PORT |= (SMBX_KBDSCAN | SMBX_KBDNEXT);
+  SMBX_PORT |= (SMBX_KBDSCAN | SMBX_KBDNEXT | SMBX_KBDIN);
 
   for (i = 0; i < 16; i++)
     smbxKeyStates[i] = 0;
@@ -1170,17 +1182,16 @@ static void SMBX_Init(void)
 static void SMBX_Scan(void)
 {
   int i,j;
+  bool first = true;
 
-  SMBX_PORT &= ~SMBX_KBDSCAN;
-  SMBX_PORT |= SMBX_KBDSCAN;
   for (i = 0; i < 16; i++) {
     uint8_t code = 0;
     for (j = 0; j < 8; j++) {
-      SMBX_PORT &= ~SMBX_KBDNEXT;
-      SMBX_PORT |= SMBX_KBDNEXT;
+      SMBX_Strobe(first ? SMBX_KBDSCAN : SMBX_KBDNEXT);
       if ((SMBX_PIN & SMBX_KBDIN) == LOW) {
         code |= (1 << j);
       }
+      first = false;
     }
     smbxNKeyStates[i] = code;
   }
