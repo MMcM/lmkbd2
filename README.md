@@ -41,9 +41,9 @@ CDC class bootloader that the Arduino IDE uses.
 | TK_KBDIN     | PD0 | D3      |            |
 | TK_KBDCLK    | PD1 | D2      |            |
 
-An two-pole switch can be wired between PF<0:1> (Arduino D23 & D22) and GND to allow
-hardware selection of the keyboard type.
+An two-pole switch can be wired between PF&lt;0:1&gt; (Arduino D23/A5 &amp;
+D22/A4) and GND to allow hardware selection of the keyboard type.
 
-An LED array can be wired to PF<4:7> (Arduino D18-D21) to display standard keyboard
-LEDs. This is less useful for these keyboards, because all the locking shift keys are
-physically locking.
+An LED array can be wired to PF&lt;4:7&gt; (Arduino D21-D18/A3-A0) to
+display standard keyboard LEDs. This is less useful for these
+keyboards, because all the locking shift keys are physically locking.

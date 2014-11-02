@@ -54,7 +54,7 @@ USB_ClassInfo_HID_Device_t Keyboard_HID_Interface =
 };
 
 typedef enum {
-  TK = 1, SPACE_CADET = 2, SMBX = 3
+  TK = 0, SPACE_CADET = 1, SMBX = 2, TI = 3
 } Keyboard;
 
 typedef enum {
@@ -195,8 +195,9 @@ static void LMKBD_Init(void)
 #ifdef LMKBD
 #error LMKBD must not be defined if LMKBD_SWITCH is enabled in local.mk
 #endif
-  SWITCH_PORT |= SWITCH_MASK;   // Enable pullups.
-  CurrentKeyboard = (Keyboard)(SWITCH_PIN & SWITCH_MASK);
+  // Enable pullups and set keyboard from switch (OPEN = 0, so default it MIT).
+  SWITCH_PORT |= SWITCH_MASK;
+  CurrentKeyboard = (Keyboard)((SWITCH_PIN & SWITCH_MASK) ^ SWITCH_MASK);
 #else
 #ifndef LMKBD
 #error LMKBD must be defined as keyboard type in local.mk
@@ -953,7 +954,7 @@ static uint8_t tkBits[3];
 void MIT_Init(void)
 {
   TK_DDR |= TK_KBDCLK;
-  TK_PORT |= TK_KBDCLK;         // Clock idle until data goes low.
+  TK_PORT |= (TK_KBDCLK | TK_KBDIN); // Clock idle until data goes low.
 }
 
 /** Read and process 24 bits of code.
@@ -967,12 +968,12 @@ static void MIT_Read(void)
     uint8_t code = 0;
     for (j = 0; j < 8; j++) {
       TK_PORT &= ~TK_KBDCLK;    // Clock low.
-      _delay_us(20);            // 50kHz.
+      _delay_us(50);            // Symmetrical would be 88 usec for loop.
       if ((TK_PIN & TK_KBDIN) == HIGH) {
         code |= (1 << j);
       }
       TK_PORT |= TK_KBDCLK;     // Clock high (idle).
-      _delay_us(20);            // 50kHz.
+      _delay_us(50);
     }
     tkBits[i] = code;
   }
@@ -1530,7 +1531,7 @@ void CALLBACK_HID_Device_ProcessHIDReport(USB_ClassInfo_HID_Device_t* const HIDI
       if (*LEDReport & (HID_KEYBOARD_LED_COMPOSE|HID_KEYBOARD_LED_KANA))
         LEDMask |= XLEDS_OTHER;
 
-      XLEDS_PORT |= (XLEDS_PORT & ~XLEDS_ALL) | LEDMask;
+      XLEDS_PORT = (XLEDS_PORT & ~XLEDS_ALL) | LEDMask;
 #endif
       }
       break;
