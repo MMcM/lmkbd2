@@ -1,4 +1,4 @@
-local.mk
+local.mk*
 *.bin
 *.d
 *.eep
