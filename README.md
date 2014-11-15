@@ -47,3 +47,25 @@ D22/A4) and GND to allow hardware selection of the keyboard type.
 An LED array can be wired to PF&lt;4:7&gt; (Arduino D21-D18/A3-A0) to
 display standard keyboard LEDs. This is less useful for these
 keyboards, because all the locking shift keys are physically locking.
+
+## Space Cadet Direct ##
+
+The weak link for working Space Cadet keyboards seems to be the 8748. The
+EPROM charge lasts a decade or more, but these keyboards are more than
+thirty years old. NOS replacements are available on eBay, but don't seem
+entirely reliable.
+
+It is possible to have the ATmega scan the demux directly, though fifteen
+connections are needed. I used an Adafruit breakout, because of the nice
+physical placement of adjacent signals. I soldered the headers on the front
+instead of the back and used M-F jumpers inserted into the chip socket, so
+that everything is reversible.
+
+| 8748 signal(s) | 8748 pin(s) | ATmega pin(s) | Signal       |
+|----------------|-------------|---------------|--------------|
+| Vss            | 20          | GND           | GND          |
+| Vcc            | 40          | 5V            | +5V          |
+| P1&lt;0&gt;    | 27          | PB0           | demux strobe |
+| P1&lt;1:4&gt;  | 28-31       | PB4-7         | demux addr   |
+| P2&lt;0:3&gt;  | 21-24       | PD0-3         | key mask     |
+| P2&lt;4:7&gt;  | 35-38       | PD4-7         |              |
