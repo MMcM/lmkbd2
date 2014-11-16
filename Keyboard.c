@@ -62,10 +62,10 @@ typedef enum {
 } TranslationMode;
 
 typedef enum {
-  NONE = 0, 
+  NONE = 0,
   L_SHIFT = 1, R_SHIFT, L_CONTROL, R_CONTROL, L_META, R_META, L_SUPER, R_SUPER,
   L_HYPER, R_HYPER, L_SYMBOL, R_SYMBOL, L_GREEK, R_GREEK,
-  CAPS_LOCK, MODE_LOCK, ALT_LOCK, 
+  CAPS_LOCK, MODE_LOCK, ALT_LOCK,
   REPEAT
 } KeyShift;
 
@@ -141,6 +141,10 @@ static void MIT_Init(void);
 static void MIT_Read(void);
 static void SMBX_Init(void);
 static void SMBX_Scan(void);
+#ifdef SPACE_CADET_DIRECT
+static void SpaceCadetDirect_Init(void);
+static void SpaceCadetDirect_Scan(void);
+#endif
 
 #define LOW 0
 #define HIGH 1
@@ -181,6 +185,16 @@ static void SMBX_Scan(void);
 #define SMBX_KBDNEXT (1 << 5)
 #define SMBX_KBDSCAN (1 << 6)
 
+#ifdef SPACE_CADET_DIRECT
+#define SC_ADDR_DDR DDRB
+#define SC_ADDR_PORT PORTB
+#define SC_ADDR_SHIFT 4
+#define SC_STROBE_DDR DDRB
+#define SC_STROBE_PORT PORTB
+#define SC_STROBE (1 << 0)
+#define SC_KEYS_PIN PIND
+#endif
+
 static void LMKBD_Init(void)
 {
   int i;
@@ -216,12 +230,19 @@ static void LMKBD_Init(void)
   EmacsBufferedCount = 0;
 
   switch (CurrentKeyboard) {
-  case TK:
   case SPACE_CADET:
+#ifdef SPACE_CADET_DIRECT
+    SpaceCadetDirect_Init();
+    break;
+    /* else same as TK */
+#endif
+  case TK:
     MIT_Init();
     break;
-  case SMBX:  
+  case SMBX:
     SMBX_Init();
+    break;
+  case TI:
     break;
   }
 }
@@ -229,13 +250,20 @@ static void LMKBD_Init(void)
 static void LMKBD_Task(void)
 {
   switch (CurrentKeyboard) {
-  case TK:
   case SPACE_CADET:
+#ifdef SPACE_CADET_DIRECT
+    SpaceCadetDirect_Scan();
+    break;
+    /* else same as TK */
+#endif
+  case TK:
     if ((TK_PIN & TK_KBDIN) == LOW)
       MIT_Read();
     break;
-  case SMBX:  
+  case SMBX:
     SMBX_Scan();
+    break;
+  case TI:
     break;
   }
 
@@ -252,7 +280,7 @@ static void KeyDown(/*PROGMEM*/ const KeyInfo *key)
   HidUsageID usage = pgm_read_byte(&key->hidUsageID);
   KeyShift shift = pgm_read_byte(&key->shift);
   PGM_P keysym = pgm_read_ptr(&key->keysym);
-  
+
   switch (CurrentMode) {
   case EMACS:
     if (shift != NONE) {
@@ -274,13 +302,13 @@ static void KeyDown(/*PROGMEM*/ const KeyInfo *key)
     if (NKeysDown < sizeof(KeysDown)) {
       KeysDown[NKeysDown++] = usage;
     }
-    if (CurrentShifts & (SHIFT(L_SUPER) | SHIFT(R_SUPER) | 
+    if (CurrentShifts & (SHIFT(L_SUPER) | SHIFT(R_SUPER) |
                          SHIFT(L_HYPER) | SHIFT(R_HYPER))) {
       // An ordinary keysym, but with unusual shifts.  Send prefix.
       // When we later catch up, the actual key will be sent.
       EmacsEvent *event = &EventBuffers[EmacsBufferIn];
-      CreateEmacsEvent(event, 
-                       (CurrentShifts & (SHIFT(L_SUPER) | SHIFT(R_SUPER) | 
+      CreateEmacsEvent(event,
+                       (CurrentShifts & (SHIFT(L_SUPER) | SHIFT(R_SUPER) |
                                          SHIFT(L_HYPER) | SHIFT(R_HYPER))),
                        NULL);
       EmacsBufferIn = (EmacsBufferIn + 1) % N_EMACS_EVENTS;
@@ -288,7 +316,7 @@ static void KeyDown(/*PROGMEM*/ const KeyInfo *key)
       break;
     }
     break;
-    
+
   default:
     if (shift != NONE) {
       CurrentShifts |= SHIFT(shift);
@@ -354,7 +382,7 @@ static void CreateEmacsEvent(EmacsEvent *event, uint32_t shifts, PGM_P keysym)
        n = 1;
      else
        n = 0;
-    
+
     chars = keysym;
 
     do {
@@ -413,7 +441,7 @@ static void AddEmacsReport(USB_KeyboardReport_Data_t* KeyboardReport)
   int i;
 
   event = &EventBuffers[EmacsBufferOut];
-  
+
   // We try to avoid sending an extra report with no keys down between
   // characters.  However, when one is doubled, there is no alternative.
   // Therefore need to check key sent in last report.
@@ -423,7 +451,7 @@ static void AddEmacsReport(USB_KeyboardReport_Data_t* KeyboardReport)
   for (i = 1; i < sizeof(KeyboardReport->KeyCode); i++) {
     KeyboardReport->KeyCode[i] = 0;
   }
-  
+
   if (event->f.all) {
     // Prefix stage.  Three substates: none, c-X sent, and c-X @ sent.
     if (!event->f.cxsent) {
@@ -492,7 +520,7 @@ static void AddEmacsReport(USB_KeyboardReport_Data_t* KeyboardReport)
         event->f.control = event->f.cxsent = event->f.atsent = false;
       }
     }
-    else if (event->f.keysym) { 
+    else if (event->f.keysym) {
       key = ASCII2HUT1('k');
       if (key == prevKey)
         KeyboardReport->KeyCode[0] = 0;
@@ -999,6 +1027,74 @@ static void MIT_Read(void)
   }
 }
 
+#ifdef SPACE_CADET_DIRECT
+
+static uint8_t scDirectKeyStates[16], scDirectNKeyStates[16];
+
+/** Read directly from SN74154 decoder.
+ * See LMIO; UKBD > for 8748 version.
+ */
+static uint8_t SpaceCadetDirect_Read(uint8_t column)
+{
+  uint8_t p2;
+
+  SC_ADDR_PORT = (SC_ADDR_PORT & ~(0x0F << SC_ADDR_SHIFT)) | (column << SC_ADDR_SHIFT);
+  SC_STROBE_PORT &= ~SC_STROBE;
+
+#if 0
+  __asm__ __volatile__ ("nop");
+#else
+  _delay_us(5);
+#endif
+
+  p2 = SC_KEYS_PIN;
+
+  SC_STROBE_PORT |= SC_STROBE;
+  return p2;
+}
+
+static void SpaceCadetDirect_Init(void)
+{
+  int i;
+
+  SC_ADDR_DDR |= (0x0F << SC_ADDR_SHIFT);
+  SC_STROBE_DDR |= SC_STROBE;
+  SC_STROBE_PORT |= SC_STROBE;  // Idle high.
+
+  for (i = 0; i < 16; i++)
+    scDirectKeyStates[i] = 0;
+}
+
+static void SpaceCadetDirect_Scan(void)
+{
+  int i,j;
+
+  for (i = 0; i < 16; i++) {
+    scDirectNKeyStates[i] = SpaceCadetDirect_Read(i);
+  }
+
+  for (i = 0; i < 16; i++) {
+    uint8_t keys, change;
+    keys = scDirectNKeyStates[i];
+    change = keys ^ scDirectKeyStates[i];
+    if (change == 0) continue;
+    scDirectKeyStates[i] = keys;
+    for (j = 0; j < 8; j++) {
+      if (change & (1 << j)) {
+        int code = (i * 8) + j;
+        if (keys & (1 << j)) {
+          KeyDown(&SpaceCadetKeys[code]);
+        }
+        else {
+          KeyUp(&SpaceCadetKeys[code]);
+        }
+      }
+    }
+  }
+}
+
+#endif
+
 /*** Symbolics keyboards ***/
 
 KEYSYM(KS_SM_002, "local");
@@ -1213,7 +1309,7 @@ static void SMBX_Scan(void)
           KeyUp(&SMBXKeys[code]);
         }
       }
-    }    
+    }
   }
 }
 
