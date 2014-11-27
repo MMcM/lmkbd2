@@ -107,11 +107,13 @@ typedef struct {
     struct {
       unsigned cxsent:1;
       unsigned atsent:1;
+      unsigned recursive:1;
       unsigned hyper:1;
       unsigned super:1;
       unsigned meta:1;
-      unsigned shift:1;
       unsigned control:1;
+      unsigned shift:1;
+      unsigned alt:1;
       unsigned keysym:1;
     };
   } f;
@@ -120,7 +122,7 @@ typedef struct {
 } EmacsEvent;
 
 static Keyboard CurrentKeyboard;
-static TranslationMode CurrentMode;
+static TranslationMode CurrentMode, CurrentModeLockMode;
 
 static uint32_t CurrentShifts;
 static HidUsageID KeysDown[16];
@@ -149,11 +151,23 @@ static void SpaceCadetDirect_Scan(void);
 #define LOW 0
 #define HIGH 1
 
-// Micro has RX & TX LEDs and user LED as LED3 (D13); other boards only have LED1.
+#ifndef DEFAULT_MODE
+#define DEFAULT_MODE HUT1
+#endif
+#ifndef DEFAULT_MODE_LOCK_MODE
+#define DEFAULT_MODE_LOCK_MODE EMACS
+#endif
+
+// Micro has RX & TX LEDs and user LED as LED3 (D13); some other boards only have LED1.
+#ifndef KEYDOWN_LED
 #if LEDS_LED3 != 0
 #define KEYDOWN_LED LEDS_LED3
 #else
 #define KEYDOWN_LED LEDS_LED1
+#endif
+#endif
+#ifndef MODELOCK_LED
+#define MODELOCK_LED LEDS_LED2
 #endif
 
 #ifdef EXTERNAL_LEDS
@@ -219,7 +233,8 @@ static void LMKBD_Init(void)
   CurrentKeyboard = LMKBD;
 #endif
 
-  CurrentMode = EMACS;
+  CurrentMode = DEFAULT_MODE;
+  CurrentModeLockMode = DEFAULT_MODE_LOCK_MODE;
 
   CurrentShifts = 0;
   NKeysDown = 0;
@@ -247,6 +262,27 @@ static void LMKBD_Init(void)
   }
 }
 
+static bool NonLockingKeyDown(void)
+{
+  int i;
+  for (i = 0; i < NKeysDown; i++) {
+    switch (KeysDown[i]) {
+    case HID_KEYBOARD_SC_LOCKING_CAPS_LOCK:
+    case HID_KEYBOARD_SC_LOCKING_NUM_LOCK:
+    case HID_KEYBOARD_SC_LOCKING_SCROLL_LOCK:
+      break;
+    default:
+      return true;
+    }
+  }
+  return false;
+}
+
+static inline bool ModeLockOn(void)
+{
+  return ((CurrentShifts & SHIFT(MODE_LOCK)) != 0);
+}
+
 static void LMKBD_Task(void)
 {
   switch (CurrentKeyboard) {
@@ -267,11 +303,17 @@ static void LMKBD_Task(void)
     break;
   }
 
-  if (NKeysDown > 0) {
-      LEDs_TurnOnLEDs(KEYDOWN_LED);
+  if (NonLockingKeyDown()) {
+    LEDs_TurnOnLEDs(KEYDOWN_LED);
   }
   else {
-      LEDs_TurnOffLEDs(KEYDOWN_LED);
+    LEDs_TurnOffLEDs(KEYDOWN_LED);
+  }
+  if (ModeLockOn()) {
+    LEDs_TurnOnLEDs(MODELOCK_LED);
+  }
+  else {
+    LEDs_TurnOnLEDs(MODELOCK_LED);
   }
 }
 
@@ -280,8 +322,9 @@ static void KeyDown(/*PROGMEM*/ const KeyInfo *key)
   HidUsageID usage = pgm_read_byte(&key->hidUsageID);
   KeyShift shift = pgm_read_byte(&key->shift);
   PGM_P keysym = pgm_read_ptr(&key->keysym);
+  uint32_t specialShifts;
 
-  switch (CurrentMode) {
+  switch (ModeLockOn() ? CurrentModeLockMode : CurrentMode) {
   case EMACS:
     if (shift != NONE) {
       CurrentShifts |= SHIFT(shift);
@@ -302,15 +345,15 @@ static void KeyDown(/*PROGMEM*/ const KeyInfo *key)
     if (NKeysDown < sizeof(KeysDown)) {
       KeysDown[NKeysDown++] = usage;
     }
-    if (CurrentShifts & (SHIFT(L_SUPER) | SHIFT(R_SUPER) |
-                         SHIFT(L_HYPER) | SHIFT(R_HYPER))) {
-      // An ordinary keysym, but with unusual shifts.  Send prefix.
-      // When we later catch up, the actual key will be sent.
+    specialShifts = CurrentShifts & (SHIFT(L_SUPER) | SHIFT(R_SUPER) |
+                                     SHIFT(L_HYPER) | SHIFT(R_HYPER) |
+                                     SHIFT(L_SYMBOL) | SHIFT(R_SYMBOL)|
+                                     SHIFT(L_GREEK) | SHIFT(R_GREEK));
+    if (specialShifts) {
+      // An ordinary key, but with unusual shifts.  Send prefix.
+      // When we later catch up, the actual key(s) will be sent from KeysDown.
       EmacsEvent *event = &EventBuffers[EmacsBufferIn];
-      CreateEmacsEvent(event,
-                       (CurrentShifts & (SHIFT(L_SUPER) | SHIFT(R_SUPER) |
-                                         SHIFT(L_HYPER) | SHIFT(R_HYPER))),
-                       NULL);
+      CreateEmacsEvent(event, specialShifts, NULL);
       EmacsBufferIn = (EmacsBufferIn + 1) % N_EMACS_EVENTS;
       EmacsBufferedCount++;
       break;
@@ -361,14 +404,21 @@ static void CreateEmacsEvent(EmacsEvent *event, uint32_t shifts, PGM_P keysym)
     event->f.super = true;
   if (shifts & (SHIFT(L_META) | SHIFT(R_META)))
     event->f.meta = true;
-  if (shifts & (SHIFT(L_SHIFT) | SHIFT(R_SHIFT)))
-    event->f.shift = true;
   if (shifts & (SHIFT(L_CONTROL) | SHIFT(R_CONTROL)))
     event->f.control = true;
+  if (shifts & (SHIFT(L_SHIFT) | SHIFT(R_SHIFT)))
+    event->f.shift = true;
 
   if (keysym == NULL) {
     event->chars = NULL;
     event->nchars = 0;
+
+    if (shifts & (SHIFT(L_SYMBOL) | SHIFT(R_SYMBOL)|
+                  SHIFT(L_GREEK) | SHIFT(R_GREEK))) {
+      // Symbol on key without a known symbol (e.g. Symbolics alphabet),
+      // send as Alt- (not Meta-) so user can map to their choice.
+      event->f.alt = event->f.recursive = true;
+    }
   }
   else {
     PGM_P chars;
@@ -376,12 +426,11 @@ static void CreateEmacsEvent(EmacsEvent *event, uint32_t shifts, PGM_P keysym)
     int n;
     char ch;
 
-     if (shifts & (SHIFT(L_GREEK) | SHIFT(R_GREEK)))
-       n = 2;
-     else if (shifts & (SHIFT(L_SYMBOL) | SHIFT(R_SYMBOL)))
-       n = 1;
-     else
-       n = 0;
+    n = 0;
+    if (shifts & (SHIFT(L_SYMBOL) | SHIFT(R_SYMBOL)))
+      n += 1;
+    if (shifts & (SHIFT(L_GREEK) | SHIFT(R_GREEK)))
+      n += 2;
 
     chars = keysym;
 
@@ -403,7 +452,7 @@ static void CreateEmacsEvent(EmacsEvent *event, uint32_t shifts, PGM_P keysym)
 
     event->nchars = nchars;
 
-    event->f.keysym = true;
+    event->f.keysym = event->f.recursive = true;
   }
 }
 
@@ -474,6 +523,15 @@ static void AddEmacsReport(USB_KeyboardReport_Data_t* KeyboardReport)
         event->f.atsent = true;
       }
     }
+    else if (event->f.recursive) {
+      key = ASCII2HUT1('q');
+      if (key == prevKey)
+        KeyboardReport->KeyCode[0] = 0;
+      else {
+        KeyboardReport->KeyCode[0] = key;
+        event->f.recursive = event->f.cxsent = event->f.atsent = false;
+      }
+    }
     else if (event->f.hyper) {
       key = ASCII2HUT1('h');
       if (key == prevKey)
@@ -501,6 +559,15 @@ static void AddEmacsReport(USB_KeyboardReport_Data_t* KeyboardReport)
         event->f.meta = event->f.cxsent = event->f.atsent = false;
       }
     }
+    else if (event->f.control) {
+      key = ASCII2HUT1('c');
+      if (key == prevKey)
+        KeyboardReport->KeyCode[0] = 0;
+      else {
+        KeyboardReport->KeyCode[0] = key;
+        event->f.control = event->f.cxsent = event->f.atsent = false;
+      }
+    }
     else if (event->f.shift) {
       key = ASCII2HUT1('s');    // S
       if (key == prevKey)
@@ -511,13 +578,13 @@ static void AddEmacsReport(USB_KeyboardReport_Data_t* KeyboardReport)
         event->f.shift = event->f.cxsent = event->f.atsent = false;
       }
     }
-    else if (event->f.control) {
-      key = ASCII2HUT1('c');
+    else if (event->f.alt) {
+      key = ASCII2HUT1('a');
       if (key == prevKey)
         KeyboardReport->KeyCode[0] = 0;
       else {
         KeyboardReport->KeyCode[0] = key;
-        event->f.control = event->f.cxsent = event->f.atsent = false;
+        event->f.alt = event->f.cxsent = event->f.atsent = false;
       }
     }
     else if (event->f.keysym) {
@@ -560,9 +627,13 @@ static void AddEmacsReport(USB_KeyboardReport_Data_t* KeyboardReport)
       else {
         EmacsBufferOut = (EmacsBufferOut + 1) % N_EMACS_EVENTS;
         EmacsBufferedCount--;
-        if (EmacsBufferedCount == 0)
+        if (EmacsBufferedCount > 0) {
+          AddEmacsReport(KeyboardReport);
+        }
+        else {
           // Catch up with actual key settings.
           AddKeyReport(KeyboardReport);
+        }
       }
     }
   }
@@ -706,14 +777,14 @@ static void TKShiftKeys(uint16_t mask)
 KEYSYM(KS_SC_001, "ii");
 KEYSYM(KS_SC_002, "iv");
 KEYSYM(KS_SC_011, ",,cent");
-KEYSYM(KS_SC_012, ",union,rho");
+KEYSYM(KS_SC_012, ",union,rho,aplrho");
 KEYSYM(KS_SC_013, ",righttack,phi");
 KEYSYM(KS_SC_014, ",similarequal,varsigma");
 KEYSYM(KS_SC_017, "handright,,circleslash");
 KEYSYM(KS_SC_021, "colon,plusminus,section");
 KEYSYM(KS_SC_030, "holdoutput");
 KEYSYM(KS_SC_031, ",,times");
-KEYSYM(KS_SC_032, ",infinity,iota");
+KEYSYM(KS_SC_032, ",infinity,iota,apliota");
 KEYSYM(KS_SC_033, ",rightarrow,kappa");
 KEYSYM(KS_SC_034, ",,guillemotleft");
 KEYSYM(KS_SC_036, "line");
@@ -728,7 +799,7 @@ KEYSYM(KS_SC_052, ",contained,psi");
 KEYSYM(KS_SC_053, ",downarrow,eta");
 KEYSYM(KS_SC_054, ",lessthanequal,nu");
 KEYSYM(KS_SC_061, ",,doubledagger");
-KEYSYM(KS_SC_062, ",logicalor,omega");
+KEYSYM(KS_SC_062, ",logicalor,omega,aplomega");
 KEYSYM(KS_SC_063, ",uptack,sigma");
 KEYSYM(KS_SC_064, ",ceiling,xi");
 KEYSYM(KS_SC_067, "abort");
@@ -752,7 +823,7 @@ KEYSYM(KS_SC_117, "handleft,,circletimes");
 KEYSYM(KS_SC_120, "quote");
 KEYSYM(KS_SC_121, ",,dagger");
 KEYSYM(KS_SC_122, ",logicaland,theta");
-KEYSYM(KS_SC_123, ",downtack,alpha");
+KEYSYM(KS_SC_123, ",downtack,alpha,aplalpha");
 KEYSYM(KS_SC_124, ",floor,zeta");
 KEYSYM(KS_SC_126, ",,approximate");
 KEYSYM(KS_SC_131, ",,horizbar");
@@ -761,16 +832,16 @@ KEYSYM(KS_SC_133, ",,periodcentered");
 KEYSYM(KS_SC_137, "parenright,bracketright,doublebracketright");
 KEYSYM(KS_SC_141, "system");
 KEYSYM(KS_SC_143, "altmode");
-KEYSYM(KS_SC_146, "braceright,rightanglebracket,broketright");
+KEYSYM(KS_SC_146, "braceright,rightanglebracket,broketbottomright,brokettopright");
 KEYSYM(KS_SC_151, ",,division");
 KEYSYM(KS_SC_152, ",forall,upsilon");
 KEYSYM(KS_SC_153, ",leftarrow,vartheta");
 KEYSYM(KS_SC_154, ",greaterthanequal,mu");
 KEYSYM(KS_SC_161, ",,del");
-KEYSYM(KS_SC_162, ",intersection,epsilon");
-KEYSYM(KS_SC_163, ",lefttack,delta");
+KEYSYM(KS_SC_162, ",intersection,epsilon,aplepsilon");
+KEYSYM(KS_SC_163, ",lefttack,delta,apldelta");
 KEYSYM(KS_SC_164, ",notequal,chi");
-KEYSYM(KS_SC_166, "braceleft,leftanglebracket,broketleft");
+KEYSYM(KS_SC_166, "braceleft,leftanglebracket,broketbottomleft,brokettopleft");
 KEYSYM(KS_SC_167, "break");
 KEYSYM(KS_SC_170, "stopoutput");
 KEYSYM(KS_SC_171, ",,circle");
@@ -1106,11 +1177,12 @@ KEYSYM(KS_SM_065, "complete");
 KEYSYM(KS_SM_071, "network");
 KEYSYM(KS_SM_100, "line");
 KEYSYM(KS_SM_104, "function");
-KEYSYM(KS_SM_112, "parenright");
+KEYSYM(KS_SM_112, "parenright"); // ,bracketleft
 KEYSYM(KS_SM_113, "page");
-KEYSYM(KS_SM_125, "parenleft");
+KEYSYM(KS_SM_125, "parenleft"); // ,bracketleft
 KEYSYM(KS_SM_132, "colon");
-KEYSYM(KS_SM_154, "vertbar");
+KEYSYM(KS_SM_141, "backslash"); // ,braceleft
+KEYSYM(KS_SM_154, "vertbar"); // ,braceright
 KEYSYM(KS_SM_160, "escape");
 KEYSYM(KS_SM_161, "refresh");
 KEYSYM(KS_SM_162, "square");
@@ -1218,7 +1290,7 @@ static KeyInfo SMBXKeys[128] PROGMEM = {
   PC_KEY(136, HID_KEYBOARD_SC_8_AND_ASTERISK, NULL), /* 8 */
   PC_KEY(137, HID_KEYBOARD_SC_0_AND_CLOSING_PARENTHESIS, NULL), /* 0 */
   PC_KEY(140, HID_KEYBOARD_SC_EQUAL_AND_PLUS, NULL), /* = */
-  PC_KEY(141, HID_KEYBOARD_SC_BACKSLASH_AND_PIPE, NULL), /* \ */
+  PC_KEY(141, HID_KEYBOARD_SC_BACKSLASH_AND_PIPE, KS_SM_141), /* \ { */
   NO_KEY(142),
   NO_KEY(143),
   NO_KEY(144),
@@ -1229,7 +1301,7 @@ static KeyInfo SMBXKeys[128] PROGMEM = {
   PC_KEY(151, HID_KEYBOARD_SC_9_AND_OPENING_PARENTHESIS, NULL), /* 9 */
   PC_KEY(152, HID_KEYBOARD_SC_MINUS_AND_UNDERSCORE, NULL), /* - */
   PC_KEY(153, HID_KEYBOARD_SC_GRAVE_ACCENT_AND_TILDE, NULL), /* ` */
-  LISP_KEY(154, HID_KEYBOARD_SC_KEYPAD_PIPE, KS_SM_154), /* | */
+  LISP_KEY(154, HID_KEYBOARD_SC_KEYPAD_PIPE, KS_SM_154), /* | } */
   NO_KEY(155),
   NO_KEY(156),
   NO_KEY(157),
@@ -1569,16 +1641,11 @@ bool CALLBACK_HID_Device_CreateHIDReport(USB_ClassInfo_HID_Device_t* const HIDIn
   case HID_REPORT_ITEM_In:
     {
       USB_KeyboardReport_Data_t* KeyboardReport = (USB_KeyboardReport_Data_t*)ReportData;
-      switch (CurrentMode) {
-      case EMACS:
-        if (EmacsBufferedCount > 0) {
-          AddEmacsReport(KeyboardReport);
-          break;
-        }
-        /* else falls through */
-      default:
+      if (EmacsBufferedCount > 0) {
+        AddEmacsReport(KeyboardReport);
+      }
+      else {
         AddKeyReport(KeyboardReport);
-        break;
       }
       *ReportSize = sizeof(USB_KeyboardReport_Data_t);
     }
@@ -1588,7 +1655,8 @@ bool CALLBACK_HID_Device_CreateHIDReport(USB_ClassInfo_HID_Device_t* const HIDIn
       uint8_t* FeatureReport = (uint8_t*)ReportData;
       FeatureReport[0] = (uint8_t)CurrentKeyboard;
       FeatureReport[1] = (uint8_t)CurrentMode;
-      *ReportSize = 2;
+      FeatureReport[2] = (uint8_t)CurrentModeLockMode;
+      *ReportSize = 3;
     }
     return true;
   default:
@@ -1635,6 +1703,7 @@ void CALLBACK_HID_Device_ProcessHIDReport(USB_ClassInfo_HID_Device_t* const HIDI
     if (ReportSize > 1) {
       uint8_t* FeatureReport = (uint8_t*)ReportData;
       CurrentMode = (TranslationMode)FeatureReport[1];
+      CurrentModeLockMode = (TranslationMode)FeatureReport[2];
     }
     break;
   }
