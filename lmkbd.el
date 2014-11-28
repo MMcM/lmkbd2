@@ -166,7 +166,7 @@ Useful when a keysym entered via `synthesize-keysym' itself has an entry, possib
                              (shift 25)
                              (control 26)
                              (meta 27)))
-                (if (not (zerop (logand modifiers (logior (lsh 1 (cadr map)) event))))
+                (if (not (zerop (logand modifiers (lsh 1 (cadr map)))))
                     (setq lmodifiers (cons (car map) lmodifiers))))
               (setq modifiers lmodifiers)))
         (setq event (event-convert-list (append modifiers (list event))))))

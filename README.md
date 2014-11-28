@@ -131,6 +131,7 @@ keyboard). This can be mapped to one of the Space Cadet keysyms, or to
 a Unicode character code.
 
 ```el
-(define-key function-key-map [(alt ?a)] 'alpha)
-(define-key function-key-map [(alt ?1)] #x2603)
+(define-key function-key-map [(alt ?a)] [alpha])
+(define-key function-key-map [(alt shift ?a)] [(shift alpha)])
+(define-key function-key-map [(alt ?1)] [#x2603])
 ```
