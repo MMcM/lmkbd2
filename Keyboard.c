@@ -121,8 +121,18 @@ typedef struct {
   uint8_t nchars;
 } EmacsEvent;
 
+typedef enum {
+  MODE_LOCK_MODE_NONE, MODE_LOCK_MODE_2, MODE_LOCK_MODE_2_SILENT
+} ModeLockMode;
+static ModeLockMode CurrentModeLockMode;
+
+#ifndef MODE_LOCK_MODE
+#define MODE_LOCK_MODE MODE_LOCK_MODE_2
+#endif
+
+#define N_MODES 2
 static Keyboard CurrentKeyboard;
-static TranslationMode CurrentMode, CurrentModeLockMode;
+static TranslationMode CurrentModes[N_MODES];
 
 static uint32_t CurrentShifts;
 static HidUsageID KeysDown[16];
@@ -154,8 +164,8 @@ static void SpaceCadetDirect_Scan(void);
 #ifndef DEFAULT_MODE
 #define DEFAULT_MODE HUT1
 #endif
-#ifndef DEFAULT_MODE_LOCK_MODE
-#define DEFAULT_MODE_LOCK_MODE EMACS
+#ifndef DEFAULT_MODE2
+#define DEFAULT_MODE2 EMACS
 #endif
 
 // Micro has RX & TX LEDs and user LED as LED3 (D13); some other boards only have LED1.
@@ -166,8 +176,8 @@ static void SpaceCadetDirect_Scan(void);
 #define KEYDOWN_LED LEDS_LED1
 #endif
 #endif
-#ifndef MODELOCK_LED
-#define MODELOCK_LED LEDS_LED2
+#ifndef MODE2_LED
+#define MODE2_LED LEDS_LED2
 #endif
 
 #ifdef EXTERNAL_LEDS
@@ -233,8 +243,9 @@ static void LMKBD_Init(void)
   CurrentKeyboard = LMKBD;
 #endif
 
-  CurrentMode = DEFAULT_MODE;
-  CurrentModeLockMode = DEFAULT_MODE_LOCK_MODE;
+  CurrentModeLockMode = MODE_LOCK_MODE;
+  CurrentModes[0] = DEFAULT_MODE;
+  CurrentModes[1] = DEFAULT_MODE2;
 
   CurrentShifts = 0;
   NKeysDown = 0;
@@ -278,9 +289,14 @@ static bool NonLockingKeyDown(void)
   return false;
 }
 
-static inline bool ModeLockOn(void)
+static inline uint8_t CurrentModeIndex(void)
 {
-  return ((CurrentShifts & SHIFT(MODE_LOCK)) != 0);
+  switch (CurrentModeLockMode) {
+  case MODE_LOCK_MODE_NONE:
+    return 0;
+  default:
+    return (CurrentShifts & SHIFT(MODE_LOCK)) ? 1 : 0;
+  }
 }
 
 static void LMKBD_Task(void)
@@ -309,11 +325,12 @@ static void LMKBD_Task(void)
   else {
     LEDs_TurnOffLEDs(KEYDOWN_LED);
   }
-  if (ModeLockOn()) {
-    LEDs_TurnOnLEDs(MODELOCK_LED);
-  }
-  else {
-    LEDs_TurnOnLEDs(MODELOCK_LED);
+  switch (CurrentModeIndex()) {
+  case 0:
+    LEDs_TurnOffLEDs(MODE2_LED);
+    break;
+  default:
+    LEDs_TurnOnLEDs(MODE2_LED);
   }
 }
 
@@ -324,7 +341,14 @@ static void KeyDown(/*PROGMEM*/ const KeyInfo *key)
   PGM_P keysym = pgm_read_ptr(&key->keysym);
   uint32_t specialShifts;
 
-  switch (ModeLockOn() ? CurrentModeLockMode : CurrentMode) {
+  if ((shift == MODE_LOCK) &&
+      (CurrentModeLockMode == MODE_LOCK_MODE_2_SILENT)) {
+    // Turn on here, but do not report to host.
+    CurrentShifts |= SHIFT(shift);
+    return;
+  }
+
+  switch (CurrentModes[CurrentModeIndex()]) {
   case EMACS:
     if (shift != NONE) {
       CurrentShifts |= SHIFT(shift);
@@ -1637,6 +1661,8 @@ bool CALLBACK_HID_Device_CreateHIDReport(USB_ClassInfo_HID_Device_t* const HIDIn
                                          void* ReportData,
                                          uint16_t* const ReportSize)
 {
+  int i;
+
   switch (ReportType) {
   case HID_REPORT_ITEM_In:
     {
@@ -1654,8 +1680,9 @@ bool CALLBACK_HID_Device_CreateHIDReport(USB_ClassInfo_HID_Device_t* const HIDIn
     {
       uint8_t* FeatureReport = (uint8_t*)ReportData;
       FeatureReport[0] = (uint8_t)CurrentKeyboard;
-      FeatureReport[1] = (uint8_t)CurrentMode;
-      FeatureReport[2] = (uint8_t)CurrentModeLockMode;
+      for (i = 0; i < N_MODES; i++) {
+        FeatureReport[i+1] = (uint8_t)CurrentModes[i];
+      }
       *ReportSize = 3;
     }
     return true;
@@ -1679,6 +1706,8 @@ void CALLBACK_HID_Device_ProcessHIDReport(USB_ClassInfo_HID_Device_t* const HIDI
                                           const void* ReportData,
                                           const uint16_t ReportSize)
 {
+  int i;
+
   switch (ReportType) {
   case HID_REPORT_ITEM_Out:
     if (ReportSize > 0) {
@@ -1700,10 +1729,11 @@ void CALLBACK_HID_Device_ProcessHIDReport(USB_ClassInfo_HID_Device_t* const HIDI
       }
       break;
   case HID_REPORT_ITEM_Feature:
-    if (ReportSize > 1) {
+    if (ReportSize > N_MODES) {
       uint8_t* FeatureReport = (uint8_t*)ReportData;
-      CurrentMode = (TranslationMode)FeatureReport[1];
-      CurrentModeLockMode = (TranslationMode)FeatureReport[2];
+      for (i = 0; i < N_MODES; i++) {
+        CurrentModes[i] = (TranslationMode)FeatureReport[i+1];
+      }
     }
     break;
   }

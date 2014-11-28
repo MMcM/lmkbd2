@@ -85,6 +85,15 @@ translated to symbolic keysyms.
 Some obvious aliases are predefined, such as `line` to `(control ?j)`
 and `scroll` to `(control ?v)`.
 
+## Windows Note ##
+
+By default, Mode Lock is also translated into the HID locking Scroll
+Lock key.  This seems to confuse Windows. Since you probably Scroll
+Lock probably does not do anything useful, setting
+`-DMODE_LOCK_MODE=MODE_LOCK_MODE_2_SILENT` will prevent telling the
+host that the key is down at all. If you do want Scroll Lock, but do
+not want Emacs mode, `-DMODE_LOCK_MODE=MODE_LOCK_NONE` does that.
+
 ## APL Characters ##
 
 Space Cadet keyboards are famous for having both the complete Greek
