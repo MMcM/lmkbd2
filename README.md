@@ -25,6 +25,7 @@ except the keyboard connector itself.
 * [Sparkfun Pro Micro](https://www.sparkfun.com/products/12640).
 * [Adafruit Atmega32u4 breakout](http://www.ladyada.net/products/atmega32u4breakout/).
 * [Teensy 2.0](https://www.pjrc.com/teensy/index.html).
+* [A-Star 32U4 Micro](http://www.pololu.com/product/3101).
 
 Boards with an ICSP can be programmed through that or the using the AVR109 protocol
 CDC class bootloader that the Arduino IDE uses.
@@ -69,3 +70,67 @@ that everything is reversible.
 | P1&lt;1:4&gt;  | 28-31       | PB4-7         | demux addr   |
 | P2&lt;0:3&gt;  | 21-24       | PD0-3         | key mask     |
 | P2&lt;4:7&gt;  | 35-38       | PD4-7         |              |
+
+### Emacs Support ###
+
+By default, when the Mode Lock key is locked, the keyboard sends
+escape sequences for non-standard shifts, named control characters,
+and every one of the legends on the Space Cadet keyboard. These
+sequences can be decoded by extended versions of the `c-X @` prefix
+characters in the `function-key-map` of modern Emacs 24 (or 25 beta)
+or XEmacs 21.4. The graphic legends are translated to Unicode
+codepoints and defined as self-inserting. The control keys are
+translated to symbolic keysyms.
+
+Some obvious aliases are predefined, such as `line` to `(control ?j)`
+and `scroll` to `(control ?v)`.
+
+## Windows Note ##
+
+By default, Mode Lock is also translated into the HID locking Scroll
+Lock key.  This seems to confuse Windows. Since you probably Scroll
+Lock probably does not do anything useful, setting
+`-DMODE_LOCK_MODE=MODE_LOCK_MODE_2_SILENT` will prevent telling the
+host that the key is down at all. If you do want Scroll Lock, but do
+not want Emacs mode, `-DMODE_LOCK_MODE=MODE_LOCK_NONE` does that.
+
+## APL Characters ##
+
+Space Cadet keyboards are famous for having both the complete Greek
+alphabet and the complete APL character set. A few legends need to
+serve both, but have separate Unicode codepoints. For these,
+Front/Greek will get the Greek one and Top+Front will get the APL one.
+
+| Key | Greek    | APL      |
+|-----|----------|----------|
+| a   | &#x03B1; | &#x237A; |
+| d   | &#x2206; | &#x2206; |
+| e   | &#x03B5; | &#x2208; |
+| i   | &#x03B9; | &#x2373; |
+| w   | &#x03C9; | &#x2375; |
+| r   | &#x03C1; | &#x2374; |
+
+## Brokets ##
+
+The front legend on the two Space Cadet brace keys have broken
+brackets ("brokets").  There are no Unicode characters for
+these. Instead, Front gives the bottom corner and Top+Front gives the
+top corner of such a shape.
+
+| Key | Front    | Top+Front |
+|-----|----------|-----------|
+| {   | &#x231E; | &#x231C;  |
+| }   | &#x231F; | &#x231D;  |
+
+## Customizing Symbol ##
+
+Symbolics keyboards do not have symbol legends, although there is a
+Symbol key. This is translated into Emacs's Alt- prefix (which is not
+the same as the Meta- prefix you get from the Alt key on a PC
+keyboard). This can be mapped to one of the Space Cadet keysyms, or to
+a Unicode character code.
+
+```el
+(define-key function-key-map [(alt ?a)] 'alpha)
+(define-key function-key-map [(alt ?1)] #x2603)
+```
