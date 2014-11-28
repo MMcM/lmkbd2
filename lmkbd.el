@@ -303,7 +303,7 @@ Key can be either a keysym symbol or a base character code."
         (lmkbd-graphic-unicode keysym '(shift) shifted-code))))
 
 (dolist (key '((clearscreen [(control ?l)])
-               (clearinput backward-kill-line)
+               (clearinput [(control ?0) (control ?k)])
                (help [(control ?h)])
                (line [(control ?j)])
                (refresh [(control ?l)])
