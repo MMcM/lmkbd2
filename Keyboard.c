@@ -137,20 +137,22 @@ static TranslationMode CurrentModes[N_MODES];
 static uint32_t CurrentShifts;
 static HidUsageID KeysDown[16];
 static uint8_t NKeysDown;
+static bool NeedEmptyReport;
 
 #define N_EMACS_EVENTS 8
 static EmacsEvent EventBuffers[N_EMACS_EVENTS];
 static uint8_t EmacsBufferIn, EmacsBufferOut;
 static uint8_t EmacsBufferedCount;
 
-static void KeyDown(const KeyInfo *key);
+static void KeyDown(const KeyInfo *key, bool exclusive);
 static void KeyUp(const KeyInfo *key);
 static void CreateEmacsEvent(EmacsEvent *event, uint32_t shifts, PGM_P keysym);
 static void AddEmacsReport(USB_KeyboardReport_Data_t* KeyboardReport);
-static void AddKeyReport(USB_KeyboardReport_Data_t* KeyboardReport);
+static void AddKeyReport(USB_KeyboardReport_Data_t* KeyboardReport, bool shiftOnly);
+static bool IsKeyDown(HidUsageID key);
 
 static void MIT_Init(void);
-static void MIT_Read(void);
+static void MIT_Read(bool delay);
 static void SMBX_Init(void);
 static void SMBX_Scan(void);
 #ifdef SPACE_CADET_DIRECT
@@ -251,6 +253,7 @@ static void LMKBD_Init(void)
   NKeysDown = 0;
   for (i = 0; i < sizeof(KeysDown); i++)
     KeysDown[i] = 0;
+  NeedEmptyReport = false;
 
   EmacsBufferIn = EmacsBufferOut = 0;
   EmacsBufferedCount = 0;
@@ -301,16 +304,18 @@ static inline uint8_t CurrentModeIndex(void)
 
 static void LMKBD_Task(void)
 {
+  bool delay = false;
   switch (CurrentKeyboard) {
   case SPACE_CADET:
 #ifdef SPACE_CADET_DIRECT
     SpaceCadetDirect_Scan();
     break;
-    /* else same as TK */
 #endif
+    /* else like TK, but with delay */
+    delay = true;
   case TK:
     if ((TK_PIN & TK_KBDIN) == LOW)
-      MIT_Read();
+      MIT_Read(delay);
     break;
   case SMBX:
     SMBX_Scan();
@@ -334,12 +339,19 @@ static void LMKBD_Task(void)
   }
 }
 
-static void KeyDown(/*PROGMEM*/ const KeyInfo *key)
+static void KeyDown(/*PROGMEM*/ const KeyInfo *key, bool exclusive)
 {
   HidUsageID usage = pgm_read_byte(&key->hidUsageID);
   KeyShift shift = pgm_read_byte(&key->shift);
   PGM_P keysym = pgm_read_ptr(&key->keysym);
   uint32_t specialShifts;
+
+  if (exclusive) {
+    if (IsKeyDown(usage)) {
+      NeedEmptyReport = true;
+    }
+    NKeysDown = 0;
+  }
 
   if ((shift == MODE_LOCK) &&
       (CurrentModeLockMode == MODE_LOCK_MODE_2_SILENT)) {
@@ -496,7 +508,7 @@ static char ASCII2HUT1(char ch)
   return 0;
 }
 
-static char IsKeyDown(char key)
+static bool IsKeyDown(HidUsageID key)
 {
   int i;
   if (!key) return false;
@@ -656,14 +668,14 @@ static void AddEmacsReport(USB_KeyboardReport_Data_t* KeyboardReport)
         }
         else {
           // Catch up with actual key settings.
-          AddKeyReport(KeyboardReport);
+          AddKeyReport(KeyboardReport, false);
         }
       }
     }
   }
 }
 
-static void AddKeyReport(USB_KeyboardReport_Data_t* KeyboardReport)
+static void AddKeyReport(USB_KeyboardReport_Data_t* KeyboardReport, bool shiftOnly)
 {
   uint8_t shifts;
   int i;
@@ -682,6 +694,8 @@ static void AddKeyReport(USB_KeyboardReport_Data_t* KeyboardReport)
   ADD_SHIFT(HID_KEYBOARD_MODIFIER_RIGHTALT,R_ALT);
   ADD_SHIFT(HID_KEYBOARD_MODIFIER_RIGHTGUI,R_GUI);
   KeyboardReport->Modifier = shifts;
+
+  if (shiftOnly) return;
 
   if (NKeysDown > sizeof(KeyboardReport->KeyCode)) {
     for (i = 0; i < sizeof(KeyboardReport->KeyCode); i++) {
@@ -704,11 +718,40 @@ KEYSYM(KS_TK_16, "caret");
 KEYSYM(KS_TK_20, "call");
 KEYSYM(KS_TK_21, "clear");
 KEYSYM(KS_TK_23, "altmode");
+KEYSYM(KS_TK_24, ",logicaland");
+KEYSYM(KS_TK_25, ",logicanor");
+KEYSYM(KS_TK_26, ",intersection");
+KEYSYM(KS_TK_27, ",union");
+KEYSYM(KS_TK_30, ",includes");
+KEYSYM(KS_TK_31, ",contained");
+KEYSYM(KS_TK_32, ",notsign");
+KEYSYM(KS_TK_33, ",circletimes");
+KEYSYM(KS_TK_34, ",downarrow");
+KEYSYM(KS_TK_35, ",uparrow");
+KEYSYM(KS_TK_41, ",infinity");
+KEYSYM(KS_TK_42, "circleminus,apldelta");
+KEYSYM(KS_TK_43, "circleplus,del");
 KEYSYM(KS_TK_44, "form");
 KEYSYM(KS_TK_45, "vt");
+KEYSYM(KS_TK_47, ",lessthanequal");
+KEYSYM(KS_TK_50, ",greaterthanequal");
+KEYSYM(KS_TK_51, ",identical");
+KEYSYM(KS_TK_52, ",partialderivative");
+KEYSYM(KS_TK_53, ",notequal");
+KEYSYM(KS_TK_54, ",help");
+KEYSYM(KS_TK_55, ",leftarrow");
+KEYSYM(KS_TK_56, ",rightarrow");
+KEYSYM(KS_TK_57, ",doublearrow");
 KEYSYM(KS_TK_61, "colon");
 KEYSYM(KS_TK_63, "line");
 KEYSYM(KS_TK_64, "backnext");
+KEYSYM(KS_TK_65, ",alpha");
+KEYSYM(KS_TK_66, ",beta");
+KEYSYM(KS_TK_67, ",epsilon");
+KEYSYM(KS_TK_70, ",lambda");
+KEYSYM(KS_TK_71, ",pi");
+KEYSYM(KS_TK_72, ",forall");
+KEYSYM(KS_TK_73, ",exists");
 
 static KeyInfo TKKeys[64] PROGMEM = {
   LISP_KEY(00, HID_KEYBOARD_SC_CANCEL, KS_TK_00), /* break */
@@ -731,46 +774,46 @@ static KeyInfo TKKeys[64] PROGMEM = {
   LISP_KEY(21, HID_KEYBOARD_SC_CLEAR, KS_TK_21), /* clear */
   PC_KEY(22, HID_KEYBOARD_SC_TAB, NULL), /* tab */
   LISP_KEY(23, HID_KEYBOARD_SC_ESCAPE, KS_TK_23), /* alt */
-  PC_KEY(24, HID_KEYBOARD_SC_Q, NULL), /* q conjunction */
-  PC_KEY(25, HID_KEYBOARD_SC_W, NULL), /* w disjunction */
-  PC_KEY(26, HID_KEYBOARD_SC_E, NULL), /* e uplump */
-  PC_KEY(27, HID_KEYBOARD_SC_R, NULL), /* r downlump */
-  PC_KEY(30, HID_KEYBOARD_SC_T, NULL), /* t leftlump */
-  PC_KEY(31, HID_KEYBOARD_SC_Y, NULL), /* y rightlump */
-  PC_KEY(32, HID_KEYBOARD_SC_U, NULL), /* u elbow */
-  PC_KEY(33, HID_KEYBOARD_SC_I, NULL), /* i wheel */
-  PC_KEY(34, HID_KEYBOARD_SC_O, NULL), /* o downarrow */
-  PC_KEY(35, HID_KEYBOARD_SC_P, NULL), /* p uparrow */
+  PC_KEY(24, HID_KEYBOARD_SC_Q, KS_TK_24), /* q conjunction */
+  PC_KEY(25, HID_KEYBOARD_SC_W, KS_TK_25), /* w disjunction */
+  PC_KEY(26, HID_KEYBOARD_SC_E, KS_TK_26), /* e uplump */
+  PC_KEY(27, HID_KEYBOARD_SC_R, KS_TK_27), /* r downlump */
+  PC_KEY(30, HID_KEYBOARD_SC_T, KS_TK_30), /* t leftlump */
+  PC_KEY(31, HID_KEYBOARD_SC_Y, KS_TK_31), /* y rightlump */
+  PC_KEY(32, HID_KEYBOARD_SC_U, KS_TK_32), /* u elbow */
+  PC_KEY(33, HID_KEYBOARD_SC_I, KS_TK_33), /* i wheel */
+  PC_KEY(34, HID_KEYBOARD_SC_O, KS_TK_34), /* o downarrow */
+  PC_KEY(35, HID_KEYBOARD_SC_P, KS_TK_35), /* p uparrow */
   PC_KEY(36, HID_KEYBOARD_SC_OPENING_BRACKET_AND_OPENING_BRACE, NULL), /* [ { */
   PC_KEY(37, HID_KEYBOARD_SC_CLOSING_BRACKET_AND_CLOSING_BRACE, NULL), /* ] } */
   PC_KEY(40, HID_KEYBOARD_SC_BACKSLASH_AND_PIPE, NULL), /* \ | */
-  PC_KEY(41, HID_KEYBOARD_SC_KEYPAD_SLASH, NULL), /* / infinity */
-  PC_KEY(42, HID_KEYBOARD_SC_KEYPAD_MINUS, NULL), /* circle minus / delta */
-  PC_KEY(43, HID_KEYBOARD_SC_KEYPAD_PLUS, NULL), /* circle plus / del */
+  PC_KEY(41, HID_KEYBOARD_SC_KEYPAD_SLASH, KS_TK_41), /* / infinity */
+  PC_KEY(42, HID_KEYBOARD_SC_KEYPAD_MINUS, KS_TK_42), /* circle minus / delta */
+  PC_KEY(43, HID_KEYBOARD_SC_KEYPAD_PLUS, KS_TK_43), /* circle plus / del */
   LISP_KEY(44, HID_KEYBOARD_SC_SEPARATOR, KS_TK_44), /* form */
   LISP_KEY(45, HID_KEYBOARD_SC_PAGE_DOWN, KS_TK_45), /* vt */
   PC_KEY(46, HID_KEYBOARD_SC_BACKSPACE, NULL), /* rubout */
-  PC_KEY(47, HID_KEYBOARD_SC_A, NULL), /* a less or equal */
-  PC_KEY(50, HID_KEYBOARD_SC_S, NULL), /* s greater or equal */
-  PC_KEY(51, HID_KEYBOARD_SC_D, NULL), /* d equivalence */
-  PC_KEY(52, HID_KEYBOARD_SC_F, NULL), /* f partial */
-  PC_KEY(53, HID_KEYBOARD_SC_G, NULL), /* g not equal */
-  PC_KEY(54, HID_KEYBOARD_SC_H, NULL), /* h help */
-  PC_KEY(55, HID_KEYBOARD_SC_J, NULL), /* j leftarrow */
-  PC_KEY(56, HID_KEYBOARD_SC_K, NULL), /* k rightarrow */
-  PC_KEY(57, HID_KEYBOARD_SC_L, NULL), /* l botharrow */
-  PC_KEY(60, HID_KEYBOARD_SC_SEMICOLON_AND_COLON, NULL), /* ; plus */
+  PC_KEY(47, HID_KEYBOARD_SC_A, KS_TK_47), /* a less or equal */
+  PC_KEY(50, HID_KEYBOARD_SC_S, KS_TK_50), /* s greater or equal */
+  PC_KEY(51, HID_KEYBOARD_SC_D, KS_TK_51), /* d equivalence */
+  PC_KEY(52, HID_KEYBOARD_SC_F, KS_TK_52), /* f partial */
+  PC_KEY(53, HID_KEYBOARD_SC_G, KS_TK_53), /* g not equal */
+  PC_KEY(54, HID_KEYBOARD_SC_H, KS_TK_54), /* h help */
+  PC_KEY(55, HID_KEYBOARD_SC_J, KS_TK_55), /* j leftarrow */
+  PC_KEY(56, HID_KEYBOARD_SC_K, KS_TK_56), /* k rightarrow */
+  PC_KEY(57, HID_KEYBOARD_SC_L, KS_TK_57), /* l botharrow */
+  PC_KEY(60, HID_KEYBOARD_SC_SEMICOLON_AND_COLON, NULL), /* ; + */
   LISP_KEY(61, HID_KEYBOARD_SC_KEYPAD_COLON, KS_TK_61), /* : * */
   PC_KEY(62, HID_KEYBOARD_SC_ENTER, NULL), /* return */
   LISP_KEY(63, HID_KEYBOARD_SC_KEYPAD_ENTER, KS_TK_63), /* line */
   LISP_KEY(64, HID_KEYBOARD_SC_PRIOR, KS_TK_64), /* backnext */
-  PC_KEY(65, HID_KEYBOARD_SC_Z, NULL), /* z alpha */
-  PC_KEY(66, HID_KEYBOARD_SC_X, NULL), /* x beta */
-  PC_KEY(67, HID_KEYBOARD_SC_C, NULL), /* c epsilon */
-  PC_KEY(70, HID_KEYBOARD_SC_V, NULL), /* v lambda */
-  PC_KEY(71, HID_KEYBOARD_SC_B, NULL), /* b pi */
-  PC_KEY(72, HID_KEYBOARD_SC_N, NULL), /* n universal */
-  PC_KEY(73, HID_KEYBOARD_SC_M, NULL), /* m existential */
+  PC_KEY(65, HID_KEYBOARD_SC_Z, KS_TK_65), /* z alpha */
+  PC_KEY(66, HID_KEYBOARD_SC_X, KS_TK_66), /* x beta */
+  PC_KEY(67, HID_KEYBOARD_SC_C, KS_TK_67), /* c epsilon */
+  PC_KEY(70, HID_KEYBOARD_SC_V, KS_TK_70), /* v lambda */
+  PC_KEY(71, HID_KEYBOARD_SC_B, KS_TK_71), /* b pi */
+  PC_KEY(72, HID_KEYBOARD_SC_N, KS_TK_72), /* n universal */
+  PC_KEY(73, HID_KEYBOARD_SC_M, KS_TK_73), /* m existential */
   PC_KEY(74, HID_KEYBOARD_SC_COMMA_AND_LESS_THAN_SIGN, NULL), /* , < */
   PC_KEY(75, HID_KEYBOARD_SC_DOT_AND_GREATER_THAN_SIGN, NULL), /* . > */
   PC_KEY(76, HID_KEYBOARD_SC_SLASH_AND_QUESTION_MARK, NULL), /* / ? */
@@ -785,15 +828,15 @@ static void TKShiftKeys(uint16_t mask)
   else                                  \
     CurrentShifts &= ~SHIFT(s);
 
-  UPDATE_SHIFTS(6,L_SHIFT);
-  UPDATE_SHIFTS(7,R_SHIFT);
-  UPDATE_SHIFTS(8,L_TOP);
-  UPDATE_SHIFTS(9,R_TOP);
-  UPDATE_SHIFTS(10,L_CONTROL);
-  UPDATE_SHIFTS(11,R_CONTROL);
-  UPDATE_SHIFTS(12,L_META);
-  UPDATE_SHIFTS(13,R_META);
-  UPDATE_SHIFTS(14,CAPS_LOCK);
+  UPDATE_SHIFTS(0,R_SHIFT);
+  UPDATE_SHIFTS(1,L_SHIFT);
+  UPDATE_SHIFTS(2,R_TOP);
+  UPDATE_SHIFTS(3,L_TOP);
+  UPDATE_SHIFTS(4,R_CONTROL);
+  UPDATE_SHIFTS(5,L_CONTROL);
+  UPDATE_SHIFTS(6,R_META);
+  UPDATE_SHIFTS(7,L_META);
+  UPDATE_SHIFTS(8,CAPS_LOCK);
 }
 
 /*** Space Cadet keyboards ***/
@@ -1083,7 +1126,7 @@ void MIT_Init(void)
 /** Read and process 24 bits of code.
  * See MOON;KBD PROTOC for interpretation.
  */
-static void MIT_Read(void)
+static void MIT_Read(bool delay)
 {
   int i,j;
 
@@ -1091,12 +1134,12 @@ static void MIT_Read(void)
     uint8_t code = 0;
     for (j = 0; j < 8; j++) {
       TK_PORT &= ~TK_KBDCLK;    // Clock low.
-      _delay_us(50);            // Symmetrical would be 88 usec for loop.
+      if (delay) _delay_us(50); // Symmetrical would be 88 usec for loop.
       if ((TK_PIN & TK_KBDIN) == HIGH) {
         code |= (1 << j);
       }
       TK_PORT |= TK_KBDCLK;     // Clock high (idle).
-      _delay_us(50);
+      if (delay) _delay_us(50);
     }
     tkBits[i] = code;
   }
@@ -1107,7 +1150,7 @@ static void MIT_Read(void)
       if (tkBits[1] & 0x01)
         KeyUp(&SpaceCadetKeys[tkBits[0]]);
       else
-        KeyDown(&SpaceCadetKeys[tkBits[0]]);
+        KeyDown(&SpaceCadetKeys[tkBits[0]], false);
       break;
     case 0x80:
       SpaceCadetAllKeysUp(tkBits[0] | (((uint16_t)tkBits[1] & 0x07) << 8));
@@ -1115,9 +1158,8 @@ static void MIT_Read(void)
     }
     break;
   case 0xFF:
-    TKShiftKeys((tkBits[0] & 0xC0) | ((uint16_t)tkBits[1] << 8));
-    NKeysDown = 0;              // There are no up transitions.
-    KeyDown(&TKKeys[tkBits[0] & 0x3F]);
+    TKShiftKeys((tkBits[0] >> 7) | ((uint16_t)tkBits[1] << 1));
+    KeyDown(&TKKeys[(tkBits[0] & 0x7F) >> 1], true); // There are no up transitions.
     break;
   }
 }
@@ -1178,7 +1220,7 @@ static void SpaceCadetDirect_Scan(void)
       if (change & (1 << j)) {
         int code = (i * 8) + j;
         if (keys & (1 << j)) {
-          KeyDown(&SpaceCadetKeys[code]);
+          KeyDown(&SpaceCadetKeys[code], false);
         }
         else {
           KeyUp(&SpaceCadetKeys[code]);
@@ -1399,7 +1441,7 @@ static void SMBX_Scan(void)
       if (change & (1 << j)) {
         int code = (i * 8) + j;
         if (keys & (1 << j)) {
-          KeyDown(&SMBXKeys[code]);
+          KeyDown(&SMBXKeys[code], false);
         }
         else {
           KeyUp(&SMBXKeys[code]);
@@ -1667,11 +1709,15 @@ bool CALLBACK_HID_Device_CreateHIDReport(USB_ClassInfo_HID_Device_t* const HIDIn
   case HID_REPORT_ITEM_In:
     {
       USB_KeyboardReport_Data_t* KeyboardReport = (USB_KeyboardReport_Data_t*)ReportData;
-      if (EmacsBufferedCount > 0) {
+      if (NeedEmptyReport) {
+        AddKeyReport(KeyboardReport, true);
+        NeedEmptyReport = false;
+      }
+      else if (EmacsBufferedCount > 0) {
         AddEmacsReport(KeyboardReport);
       }
       else {
-        AddKeyReport(KeyboardReport);
+        AddKeyReport(KeyboardReport, false);
       }
       *ReportSize = sizeof(USB_KeyboardReport_Data_t);
     }

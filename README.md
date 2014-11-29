@@ -10,11 +10,14 @@ an ATmega32U4, but probably works with anything similar that LUFA supports.
 
 * Symbolics keyboard with 6-pin RJ12 modular cable.
 * MIT / Symbolics / LMI Space Cadet keyboard with 34-pin IDC ribbon cable.
-* MIT Knight keyboard with Amphenol 9-pin mini-hex cable (probably).
+* MIT Knight keyboard with Amphenol 9-pin mini-hex cable.
 
 The code includes key codes for the TI Explorer, but I do not have information on the
 encoding protocol or access to an example. Feel free to submit an issue if you do and
 want it supported.
+
+Note that the Knight keyboard does not send key up transitions, so
+keyboard autorepeat will need to be disabled in the operating system.
 
 ## Hardware ##
 
@@ -32,15 +35,15 @@ CDC class bootloader that the Arduino IDE uses.
 
 ### Connections ###
 
-| Signal       | Pin | Arduino | RJ12 color |
-|--------------|-----|---------|------------|
-| GND          | GND | GND     | blue       |
-| +5V          | VCC | 5V      | green      |
-| SMBX_KBDIN   | PB4 | D8      | red        |
-| SMBX_KBDNEXT | PB5 | D9      | black      |
-| SMBX_KBDSCAN | PB6 | D10     | white      |
-| TK_KBDIN     | PD0 | D3      |            |
-| TK_KBDCLK    | PD1 | D2      |            |
+| Signal       | Pin | Arduino | RJ12 color | IDC | Mini-hex |
+|--------------|-----|---------|------------|-----|----------|
+| GND          | GND | GND     | blue       |  34 | B,D,F,J  |
+| +5V          | VCC | 5V      | green      |  20 | H        |
+| SMBX_KBDIN   | PB4 | D8      | red        |     |          |
+| SMBX_KBDNEXT | PB5 | D9      | black      |     |          |
+| SMBX_KBDSCAN | PB6 | D10     | white      |     |          |
+| TK_KBDIN     | PD0 | D3      |            |   3 | C        |
+| TK_KBDCLK    | PD1 | D2      |            |   2 | A        |
 
 An two-pole switch can be wired between PF&lt;0:1&gt; (Arduino D23/A5 &amp;
 D22/A4) and GND to allow hardware selection of the keyboard type.
