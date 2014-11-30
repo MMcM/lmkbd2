@@ -190,7 +190,7 @@ Key can be either a keysym symbol or a base character code."
 ;; file is loaded.
 (dolist (key '((alpha #x03B1 #x0391)    ;α Α
                (approximate #x2248)     ;≈
-               (atsign #x0040)          ;@
+               (atsign #x0040 #x0060)   ;@ `
                (backslash #x005C #x007B) ;\ {
                (beta #x03B2 #x0392)     ;β Β
                (braceleft #x007B)       ;{
@@ -204,7 +204,7 @@ Key can be either a keysym symbol or a base character code."
                (broketbottomright #x231F) ;⌟
                (brokettopleft #x231C)   ;⌜
                (brokettopright #x231D)  ;⌝
-               (caret #x005E)           ;^
+               (caret #x005E #x007E)    ;^ ~
                (ceiling #x2308)         ;⌈
                (cent #x00A2)            ;¢
                (chi #x03C7 #x03A7)      ;χ Χ
@@ -213,7 +213,7 @@ Key can be either a keysym symbol or a base character code."
                (circleplus #x2295)      ;⊕
                (circleslash #x2298)     ;⊘
                (circletimes #x2297)     ;⊗
-               (colon #x003A)           ;:
+               (colon #x003A #x002A)    ;: *
                (contained #x2283)       ;⊃
                (dagger #x2020)          ;†
                (degree #x00B0)          ;°
