@@ -1,0 +1,284 @@
+
+xkb_geometry "tk" {
+
+    description = "Knight";
+    width = 440;
+    height = 220;
+
+    shape.cornerRadius = 1;
+    shape "NORM" { { [ 18,18] }, { [2,1], [ 16,16] } };
+    shape "LTOP" { { [ 24,18] }, { [2,1], [ 22,16] } };
+    shape "CTRL" { { [ 28,18] }, { [2,1], [ 26,16] } };
+    shape "RTSH" { { [ 32,18] }, { [2,1], [ 30,16] } };
+    shape "LFSH" { { [ 38,18] }, { [2,1], [ 36,16] } };
+    shape "SPCE" { { [152,18] }, { [2,1], [150,16] } };
+
+    alias <LTOP> = <HNGL>;
+    alias <RTOP> = <HJCV>;
+
+    key.shape = "NORM";
+    key.gap = 1;
+    key.color = "grey10";
+
+    row.left = 9;
+
+    section "Main" {
+        left = 20;
+        top = 99;
+        row {
+            top = 1;
+            keys { { <PAUS>, color="blue" },
+                   { <ESC>, "LFSH", color="blue" },
+                   <AE01>, <AE02>, <AE03>, <AE04>, <AE05>,
+                   <AE06>, <AE07>, <AE08>, <AE09>, <AE10>,
+                   <AE11>, <KPMU>, <TLDE>,
+                   { <INS>, "LFSH", color="blue" },
+                   { <STOP>, "LFSH", color="blue" }
+            };
+        };
+        row {
+            top = 20;
+            keys { { <DELE>, color="blue" },
+                   { <TAB>, "CTRL", color="blue" },
+                   { <FK14>, color="blue" },
+                   <AD01>, <AD02>, <AD03>, <AD04>, <AD05>,
+                   <AD06>, <AD07>, <AD08>, <AD09>, <AD10>,
+                   { <AD11>, color="blue" }, { <AD12>, color="blue" },
+                   { <BKSL>, "CTRL", color="blue" },
+                   { <KPDV>, color="blue" }, { <KPSU>, color="blue" },
+                   { <KPAD>, color="blue" }
+            };
+        };
+        row {
+            top = 39;
+            keys { { <FK05>, color="blue" }, { <PGDN>, color="blue" },
+                   { <BKSP>, "RTSH", color="blue" },
+                   <AC01>, <AC02>, <AC03>, <AC04>, <AC05>,
+                   <AC06>, <AC07>, <AC08>, <AC09>, <AC10>,
+                   { <AC11>, color="blue" },
+                   { <RTRN>, "LFSH", color="blue" },
+                   { <KPEN>, "LTOP", color="blue" },
+                   { <FK03>, color="blue" }
+            };
+        };
+        row {
+            top = 58;
+            keys { { <CAPS>, color="blue" },
+                   { <AB11>, "LTOP", color="blue" },
+                   { <LFSH>, "LFSH", color="blue" },
+                    <AB01>, <AB02>, <AB03>, <AB04>, <AB05>,
+                    <AB06>, <AB07>, <AB08>, <AB09>, <AB10>,
+                   { <RTSH>, "RTSH", color="blue" },
+                   { <HKTG>, "LFSH", color="blue" }
+            };
+        };
+        row {
+            top = 77;
+            left = 1;
+            key.shape= "CTRL";
+            key.color= "blue";
+            keys { <LALT>, <LCTL>,
+                   { <SPCE>, "SPCE", 52 },
+                   { <RCTL>, 40 }, <RALT>
+            };
+        };
+    };
+
+};
+
+xkb_geometry "space_cadet" {
+
+    description = "Space Cadet";
+    width = 530;
+    height = 200;
+
+    shape.cornerRadius = 1;
+    shape "NORM" { { [ 18,18] }, { [2,1], [ 16,16] } };
+    shape "FUNC" { { [ 37,18] }, { [2,1], [ 35,16] } };
+    shape "CTRL" { { [ 32,18] }, { [2,1], [ 30,16] } };
+    shape "META" { { [ 27,18] }, { [2,1], [ 25,16] } };
+    shape "LFSH" { { [ 40,18] }, {[10,1], [ 30,16] } };
+    shape "RTSH" { { [ 38,18] }, {[10,1], [ 28,16] } };
+    shape "LINE" { { [ 22,18] }, { [2,1], [ 20,16] } };
+    shape "TAB"  { { [ 27,18] }, { [2,1], [ 25,16] } };
+    shape "SPCE" { { [165,18] }, { [2,1], [163,16] } };
+
+    alias <LTOP> = <HNGL>;
+    alias <RTOP> = <HJCV>;
+    alias <LGRK> = <HENK>;
+    alias <RGRK> = <HKTG>;
+
+    key.shape = "NORM";
+    key.gap = 1;
+    key.color = "grey10";
+
+    row.left = 1;
+
+    section "Main" {
+        left = 40;
+        top = 70;
+        row {
+            top = 1;
+            key.shape = "FUNC";
+            key.color = "blue";
+            keys { <FK09>, <FK11>, <ESC>, <INS>, <FK08>, <FK05>,
+                   <FK16>, <FK17>, <FK18>, <PAUS>, <FK10>, <STOP>
+            };
+        };
+        row {
+            top = 20;
+            keys { <KP1>, <KP2>,
+                   { <FK12>, "FUNC", color="blue" },
+                   <KPMU>,
+                   <AE01>, <AE02>, <AE03>, <AE04>, <AE05>,
+                   <AE06>, <AE07>, <AE08>, <AE09>, <AE10>,
+                   { <AE11>, "TAB" }, { <AE12>, "TAB" },
+                   <AD11>, <AD12>,
+                   { <FK20>, "FUNC", color="blue" },
+                   <KP6>, <KP7>
+            };
+        };
+        row {
+            top = 39;
+            keys { <KP3>, <KP4>,
+                   { <FK13>, "FUNC", color="blue" },
+                   { <TAB>, "TAB", color="blue" },
+                   <AD01>, <AD02>, <AD03>, <AD04>, <AD05>,
+                   <AD06>, <AD07>, <AD08>, <AD09>, <AD10>,
+                   <I187>, <I188>, <TLDE>,
+                   { <BKSL>, "TAB" },
+                   { <DELE>, "FUNC", color="blue" },
+                   <KP8>, <KP9>
+            };
+        };
+        row {
+            top = 58;
+            keys { { <SCLK>, "FUNC", color="blue" }, { <FK14>, "FUNC", color="blue" },
+                   { <BKSP>, "CTRL", color="blue" },
+                   <AC01>, <AC02>, <AC03>, <AC04>, <AC05>,
+                   <AC06>, <AC07>, <AC08>, <AC09>, <AC10>, <AC11>,
+                   { <RTRN>, "FUNC", color="blue" },
+                   { <KPEN>, "LINE", color="blue" },
+                   { <END>, "FUNC", color="blue" }, { <HELP>, "FUNC", color="blue" }
+            };
+        };
+        row {
+            top = 77;
+            keys { { <CAPS>, color="blue" },
+                   { <AB11>, "META", color="blue" }, { <AE13>, "META", color="blue" },
+                   { <LFSH>, "LFSH", color="blue" },
+                    <AB01>, <AB02>, <AB03>, <AB04>, <AB05>,
+                    <AB06>, <AB07>, <AB08>, <AB09>, <AB10>,
+                   { <RTSH>, "RTSH", color="blue" },
+                   { <HENK>, "META", color="blue" },
+                   { <HKTG>, 8, "META", color="blue" },
+                   { <AGAI>, "META", color="blue" },
+                   { <NMLK>, color="blue" }
+            };
+        };
+        row {
+            top = 96;
+            key.shape = "META";
+            key.color = "blue";
+            keys { <MUHE>, <LWIN>, <LALT>, { <LCTL>, "CTRL" },
+                   { <SPCE>, "SPCE", 15 },
+                   { <RCTL>, "CTRL", 13 }, { <RALT>, 30 }, <RWIN>, <JPCM>
+            };
+        };
+    };
+
+};
+
+xkb_geometry "smbx" {
+
+    description = "Symbolics";
+    width = 460;
+    height = 230;
+
+    shape.cornerRadius = 1;
+    shape "NORM" { { [ 18,18] }, { [2,1], [ 16,16] } };
+    shape "FUNC" { { [ 37,18] }, { [2,1], [ 35,16] } };
+    shape "LINE" { { [ 22,18] }, { [2,1], [ 20,16] } };
+    shape "TAB"  { { [ 28,18] }, { [2,1], [ 26,16] } };
+    shape "RUBO" { { [ 34,18] }, { [2,1], [ 32,16] } };
+    shape "SHFT" { { [ 39,18] }, { [2,1], [ 37,16] } };
+    shape "SPCE" { { [161,18] }, { [2,1], [159,16] } };
+
+    alias <LSYM> = <HNGL>;
+    alias <RSYM> = <HJCV>;
+
+    key.shape = "NORM";
+    key.gap = 1;
+    key.color = "grey20";
+
+    row.left = 1;
+
+    section "Main" {
+        left = 40;
+        top = 45;
+        row {
+            top = 1;
+            key.shape = "FUNC";
+            key.color = "grey10";
+            keys { <FK11>, <ESC>, <FK05>, <FK22>, <FK23>,
+                   <FK24>, <FK08>, <PAUS>, <FK10>, <STOP>
+            };
+        };
+        row {
+            top = 20;
+            keys { { <FK13>, "FUNC", color="grey10" },
+                   <KPMU>,
+                   <AE01>, <AE02>, <AE03>, <AE04>, <AE05>,
+                   <AE06>, <AE07>, <AE08>, <AE09>, <AE10>,
+                   <AE11>, <AE12>, <TLDE>, <AD11>, <AD12>,
+                   { <HELP>, "FUNC", color="grey10" }
+            };
+        };
+        row {
+            top = 39;
+            keys { { <FK14>, "FUNC", color="grey10" },
+                   { <TAB>, "TAB", color="grey10" },
+                   <AD01>, <AD02>, <AD03>, <AD04>, <AD05>,
+                   <AD06>, <AD07>, <AD08>, <AD09>, <AD10>,
+                   <I187>, <I188>,
+                   { <INS>, color="grey10" },
+                   { <FK19>, "TAB", color="grey10" },
+                   { <FK15>, "FUNC", color="grey10" }
+            };
+        };
+        row {
+            top = 58;
+            keys { { <FK12>, "FUNC", color="grey10" },
+                   { <BKSP>, "RUBO", color="grey10" },
+                   <AC01>, <AC02>, <AC03>, <AC04>, <AC05>,
+                   <AC06>, <AC07>, <AC08>, <AC09>, <AC10>, <AC11>,
+                   { <RTRN>, "FUNC", color="grey10" },
+                   { <KPEN>, "LINE", color="grey10" },
+                   { <END>, "FUNC", color="grey10" }
+            };
+        };
+        row {
+            top = 77;
+            keys { { <CAPS>, color="grey10" },
+                   { <AB11>, "LINE", color="grey10" },
+                   { <LFSH>, "SHFT", color="grey10" },
+                    <AB01>, <AB02>, <AB03>, <AB04>, <AB05>,
+                    <AB06>, <AB07>, <AB08>, <AB09>, <AB10>,
+                   { <RTSH>, "SHFT", color="grey10" },
+                   { <HKTG>, "LINE", color="grey10" },
+                   { <AGAI>, "LINE", color="grey10" },
+                   { <NMLK>, "LINE", color="grey10" }
+            };
+        };
+        row {
+            top = 96;
+            key.color = "grey10";
+            keys { <MUHE>, <LWIN>, <LALT>,
+                   { <LCTL>, "FUNC" }, { <SPCE>, "SPCE" }, { <RCTL>, "FUNC" },
+                   <RALT>, <RWIN>, <JPCM>,
+                   { <PGDN>, "TAB", color="grey10" }
+            };
+        };
+    };
+
+};
