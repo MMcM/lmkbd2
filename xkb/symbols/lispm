@@ -271,6 +271,9 @@ xkb_symbols "space_cadet_graphic" {
 partial alphanumeric_keys
 xkb_symbols "smbx_graphic" {
 
+    // TODO: Symbol shift is defined, but no secondary keysyms here.
+    // Should these get copied from Genera or would ISO 9995-3 be more useful?
+
     key <KPMU> { [      colon, colon        ] };
     key <AE01> { [          1, exclam       ] };
     key <AE02> { [          2, at           ] };
