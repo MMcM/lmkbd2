@@ -1,0 +1,330 @@
+
+default partial alphanumeric_keys modifier_keys function_keys
+xkb_symbols "common" {
+    // Substantially the same as pc(default), but avoiding messing with modifiers.
+    include "lispm(modifier)"
+    include "lispm(basic)"
+    include "lispm(function)"
+};
+
+xkb_symbols "tk" {
+    name[Group1]= "Knight";
+    include "lispm(tk_graphic)"
+    include "lispm(common)"
+};
+
+xkb_symbols "space_cadet" {
+    name[Group1]= "Space Cadet";
+    include "lispm(space_cadet_graphic)"
+    include "lispm(common)"
+    include "lispm(front)"
+    include "lispm(hyper)"
+};
+
+xkb_symbols "smbx" {
+    name[Group1]= "Symbolics";
+    include "lispm(smbx_graphic)"
+    include "lispm(common)"
+    include "lispm(hyper)"
+};
+
+partial modifier_keys
+xkb_symbols "front" {
+    key <AE13> { [ ISO_Level5_Shift ] };
+    key <HENK> { [ ISO_Level5_Shift ] };
+    include "level5(modifier_mapping)"
+};
+
+partial modifier_keys
+xkb_symbols "hyper" {
+    key <MUHE> { [ Hyper_L          ] };
+    key <JPCM> { [ Hyper_R          ] };
+    modifier_map Mod2    { Hyper_L, Hyper_R };
+};
+
+partial hidden modifier_keys
+xkb_symbols "modifier" {
+    key <CAPS> { [ Caps_Lock        ] };
+
+    key <LFSH> { [ Shift_L          ] };
+    key <LCTL> { [ Control_L        ] };
+    key <LWIN> { [ Super_L          ] };
+    key <LALT> { [ Alt_L, Meta_L    ] };
+
+    key <RTSH> { [ Shift_R          ] };
+    key <RCTL> { [ Control_R        ] };
+    key <RWIN> { [ Super_R          ] };
+    key <RALT> { [ Alt_R, Meta_R    ] };
+
+    key <AB11> { [ ISO_Level3_Shift ] };
+    key <HKTG> { [ ISO_Level3_Shift ] };
+    include "level3(modifier_mapping)"
+
+    modifier_map Shift   { Shift_L, Shift_R };
+    modifier_map Lock    { Caps_Lock };
+    modifier_map Control { Control_L, Control_R };
+    modifier_map Mod1    { Alt_L, Alt_R, Meta_L, Meta_R };
+    modifier_map Mod4    { Super_L, Super_R };
+
+};
+
+partial hidden alphanumeric_keys
+xkb_symbols "basic" {
+    key <AGAI> { [ Redo               ] };
+    key <BKSP> { [ BackSpace          ] };
+    key <DELE> { [ Delete             ] };
+    key <END>  { [ End,  Home         ] };
+    key <ESC>  { [ Escape             ] };
+    key <HELP> { [ Help               ] };
+    key <INS>  { [ Insert             ] };
+    key <KPEN> { [ Linefeed           ] };
+    key <PAUS> { [ Break              ] };
+    key <PGDN> { [ Next, Prior        ] };
+    key <RTRN> { [ Return             ] };
+    key <SPCE> { [ space              ] };
+    key <STOP> { [ Cancel             ] };
+    key <TAB>  { [ Tab,  ISO_Left_Tab ] };
+};
+
+partial hidden function_keys
+xkb_symbols "function" {
+    key <FK01> { [ F1  ] };
+    key <FK02> { [ F2  ] };
+    key <FK03> { [ F3  ] };
+    key <FK04> { [ F4  ] };
+    key <FK05> { [ F5  ] };
+    key <FK06> { [ F6  ] };
+    key <FK07> { [ F7  ] };
+    key <FK08> { [ F8  ] };
+    key <FK09> { [ F9  ] };
+    key <FK10> { [ F10 ] };
+    key <FK11> { [ F11 ] };
+    key <FK12> { [ F12 ] };
+    key <FK13> { [ F13 ] };
+    key <FK14> { [ F14 ] };
+    key <FK15> { [ F15 ] };
+    key <FK16> { [ F16 ] };
+    key <FK17> { [ F17 ] };
+    key <FK18> { [ F18 ] };
+    key <FK19> { [ F19 ] };
+    key <FK20> { [ F20 ] };
+    key <FK21> { [ F21 ] };
+    key <FK22> { [ F22 ] };
+    key <FK23> { [ F23 ] };
+    key <FK24> { [ F24 ] };
+};
+
+partial alphanumeric_keys
+xkb_symbols "inet_evdev" {
+    // These do not exist, but do not conflict and might be on a second PC keyboard.
+
+    key <UP>   { [ Up                   ] };
+    key <DOWN> { [ Down                 ] };
+    key <LEFT> { [ Left                 ] };
+    key <RGHT> { [ Right                ] };
+
+    key <HOME> { [ Home                 ] };
+    key <PGUP> { [ Prior                ] };
+
+    key <COPY> { [ XF86Copy             ] };
+    key <CUT>  { [ XF86Cut              ] };
+    key <MUTE> { [ XF86AudioMute        ] };
+    key <OPEN> { [ XF86Open             ] };
+    key <PAST> { [ XF86Paste            ] };
+    key <POWR> { [ XF86PowerOff         ] };
+    key <VOL+> { [ XF86AudioRaiseVolume ] };
+    key <VOL-> { [ XF86AudioLowerVolume ] };
+
+    key <I150> { [ XF86Sleep            ] };
+    key <I151> { [ XF86WakeUp           ] };
+
+};
+
+partial alphanumeric_keys
+xkb_symbols "tk_graphic" {
+
+    key <AE01> { [            1, exclam          ] };
+    key <AE02> { [            2, quotedbl        ] };
+    key <AE03> { [            3, numbersign      ] };
+    key <AE04> { [            4, dollar          ] };
+    key <AE05> { [            5, percent         ] };
+    key <AE06> { [            6, ampersand       ] };
+    key <AE07> { [            7, apostrophe      ] };
+    key <AE08> { [            8, parenleft       ] };
+    key <AE09> { [            9, parenright      ] };
+    key <AE10> { [            0, underscore      ] };
+    key <AE11> { [        minus, equal           ] };
+    key <KPMU> { [           at, grave           ] };
+    key <TLDE> { [  asciicircum, asciitilde      ] };
+
+    key <AD01> { [            q, Q,        U2227 ] };
+    key <AD02> { [            w, W,        U2228 ] };
+    key <AD03> { [            e, E,        U2229 ] };
+    key <AD04> { [            r, R,        U222A ] };
+    key <AD05> { [            t, T,        U2282 ] };
+    key <AD06> { [            y, Y,        U2283 ] };
+    key <AD07> { [            u, U,        U2310 ] };
+    key <AD08> { [            i, I,        U2297 ] };
+    key <AD09> { [            o, O,        U2193 ] };
+    key <AD10> { [            p, P,        U2191 ] };
+    key <AD11> { [  bracketleft, braceleft       ] };
+    key <AD12> { [ bracketright, braceright      ] };
+    key <BKSL> { [    backslash, bar             ] };
+    key <KPDV> { [        slash, U221E           ] };
+    key <KPSU> { [        U2296, U2206           ] };
+    key <KPAD> { [        U2295, U2207           ] };
+
+    key <AC01> { [            a, A,        U2264 ] };
+    key <AC02> { [            s, S,        U2265 ] };
+    key <AC03> { [            d, D,        U2261 ] };
+    key <AC04> { [            f, F,        U2202 ] };
+    key <AC05> { [            g, G,        U2260 ] };
+    key <AC06> { [            h, H,        Help  ] };
+    key <AC07> { [            j, J,        U2190 ] };
+    key <AC08> { [            k, K,        U2192 ] };
+    key <AC09> { [            l, L,        U2194 ] };
+    key <AC10> { [    semicolon, plus            ] };
+    key <AC11> { [        colon, asterisk        ] };
+
+    key <AB01> { [            z, Z,        U03B1 ] };
+    key <AB02> { [            x, X,        U03B2 ] };
+    key <AB03> { [            c, C,        U03B5 ] };
+    key <AB04> { [            v, V,        U03BB ] };
+    key <AB05> { [            b, B,        U03C0 ] };
+    key <AB06> { [            n, N,        U2200 ] };
+    key <AB07> { [            m, M,        U2203 ] };
+    key <AB08> { [        comma, less            ] };
+    key <AB09> { [       period, greater         ] };
+    key <AB10> { [        slash, question        ] };
+
+};
+
+partial alphanumeric_keys
+xkb_symbols "space_cadet_graphic" {
+
+    key.type[Group1] = "EIGHT_LEVEL";
+    
+    key <KP1>  { [      U2160                                                        ] };
+    key <KP2>  { [      U2161                                                        ] };
+    key <KPMU> { [      colon, plusminus,    NoSymbol, plusminus, section            ] };
+    key <AE01> { [          1, exclam,       NoSymbol, NoSymbol, U2020               ] };
+    key <AE02> { [          2, at,           NoSymbol, NoSymbol, U2021               ] };
+    key <AE03> { [          3, numbersign,   NoSymbol, NoSymbol, U2207               ] };
+    key <AE04> { [          4, dollar,       NoSymbol, NoSymbol, cent                ] };
+    key <AE05> { [          5, percent,      NoSymbol, NoSymbol, degree              ] };
+    key <AE06> { [          6, asciicircum,  NoSymbol, NoSymbol, U2395               ] };
+    key <AE07> { [          7, ampersand,    NoSymbol, NoSymbol, division            ] };
+    key <AE08> { [          8, asterisk,     NoSymbol, NoSymbol, multiply            ] };
+    key <AE09> { [          9, parenleft,    NoSymbol, NoSymbol, paragraph           ] };
+    key <AE10> { [          0, parenright,   NoSymbol, NoSymbol, U25CB               ] };
+    key <AE11> { [      minus, underscore,   NoSymbol, NoSymbol, U2015               ] };
+    key <AE12> { [      equal, plus,         NoSymbol, NoSymbol, U2248               ] };
+    key <AD11> { [  braceleft, U2039,        NoSymbol, U2039, U231E, NoSymbol, U231C ] };
+    key <AD12> { [ braceright, U203A,        NoSymbol, U203A, U231F, NoSymbol, U231D ] };
+    key <KP6>  { [         Up, Up,                 Up, Up,       U2296               ] };
+    key <KP7>  { [       Down, Down,             Down, Down,     U2295               ] };
+
+    key <KP3>  { [      U2162                                                        ] };
+    key <KP4>  { [      U2163                                                        ] };
+    key <AD01> { [          q, Q,               U2227, NoSymbol, U03B8, U0398        ] };
+    key <AD02> { [          w, W,               U2228, NoSymbol, U03C9, U03A9, U2375 ] };
+    key <AD03> { [          e, E,               U2229, NoSymbol, U03B5, U0395, U2208 ] };
+    key <AD04> { [          r, R,               U222A, NoSymbol, U03C1, U03A1, U2374 ] };
+    key <AD05> { [          t, T,               U2282, NoSymbol, U03C4, U03A4        ] };
+    key <AD06> { [          y, Y,               U2283, NoSymbol, U03C8, U03A8        ] };
+    key <AD07> { [          u, U,               U2200, NoSymbol, U03C5, U03A5        ] };
+    key <AD08> { [          i, I,               U221E, NoSymbol, U03B9, U0399, U2373 ] };
+    key <AD09> { [          o, O,               U2203, NoSymbol, U03BF, U039F        ] };
+    key <AD10> { [          p, P,               U2202, NoSymbol, U03C0, U03A0        ] };
+    key <I187> { [  parenleft, bracketleft,  NoSymbol, NoSymbol, U27E6               ] };
+    key <I188> { [ parenright, bracketright, NoSymbol, NoSymbol, U27E7               ] };
+    key <TLDE> { [      grave, asciitilde,   NoSymbol, NoSymbol, U2310               ] };
+    key <BKSL> { [  backslash, bar,          NoSymbol, NoSymbol, U2016               ] };
+    key <KP8>  { [       Left, Left,         NoSymbol, NoSymbol, U2297               ] };
+    key <KP9>  { [      Right, Right,        Nosymbol, NoSymbol, U2298               ] };
+
+    key <AC01> { [          a, A,               U22A4, NoSymbol, U03B1, U0391, U237A ] };
+    key <AC02> { [          s, S,               U22A5, NoSymbol, U03C3, U03A3        ] };
+    key <AC03> { [          d, D,               U22A3, NoSymbol, U03b4, U0394, U2206 ] };
+    key <AC04> { [          f, F,               U22A2, NoSymbol, U03C6, U03A6        ] };
+    key <AC05> { [          g, G,               U2191, NoSymbol, U03B3, U0393        ] };
+    key <AC06> { [          h, H,               U2193, NoSymbol, U03B7, U0397        ] };
+    key <AC07> { [          j, J,               U2190, NoSymbol, U03D1               ] };
+    key <AC08> { [          k, K,               U2192, NoSymbol, U03BA, U039A        ] };
+    key <AC09> { [          l, L,               U2194, NoSymbol, U03BB, U039B        ] };
+    key <AC10> { [  semicolon, colon,        NoSymbol, NoSymbol, diaeresis           ] };
+    key <AC11> { [ apostrophe, quotedbl,     NoSymbol, NoSymbol, periodcentered      ] };
+
+    key <AB01> { [          z, Z,               U230A, NoSymbol, U03B6, U0396        ] };
+    key <AB02> { [          x, X,               U2308, NoSymbol, U03BE, U039E        ] };
+    key <AB03> { [          c, C,               U2260, NoSymbol, U03C7, U03A7        ] };
+    key <AB04> { [          v, V,               U2243, NoSymbol, U03C2               ] };
+    key <AB05> { [          b, B,               U2261, NoSymbol, U03B2, U0392        ] };
+    key <AB06> { [          n, N,               U2264, NoSymbol, U03BD, U039D        ] };
+    key <AB07> { [          m, M,               U2265, NoSymbol, U03BC, U039C        ] };
+    key <AB08> { [      comma, less,         NoSymbol, NoSymbol, guillemotleft       ] };
+    key <AB09> { [     period, greater,      NoSymbol, NoSymbol, guillemotright      ] };
+    key <AB10> { [      slash, question,     NoSymbol, NoSymbol, U222B               ] };
+
+};
+
+partial alphanumeric_keys
+xkb_symbols "smbx_graphic" {
+
+    // TODO: Symbol shift is defined, but no secondary keysyms here.
+    // Should these get copied from Genera or would ISO 9995-3 be more useful?
+
+    key <KPMU> { [      colon, colon        ] };
+    key <AE01> { [          1, exclam       ] };
+    key <AE02> { [          2, at           ] };
+    key <AE03> { [          3, numbersign   ] };
+    key <AE04> { [          4, dollar       ] };
+    key <AE05> { [          5, percent      ] };
+    key <AE06> { [          6, asciicircum  ] };
+    key <AE07> { [          7, ampersand    ] };
+    key <AE08> { [          8, asterisk     ] };
+    key <AE09> { [          9, parenleft    ] };
+    key <AE10> { [          0, parenright   ] };
+    key <AE11> { [      minus, underscore   ] };
+    key <AE12> { [      equal, plus         ] };
+    key <TLDE> { [      grave, asciitilde   ] };
+    key <AD11> { [  backslash, braceleft    ] };
+    key <AD12> { [        bar, braceright   ] };
+
+    key <AD01> { [          q, Q            ] };
+    key <AD02> { [          w, W            ] };
+    key <AD03> { [          e, E            ] };
+    key <AD04> { [          r, R            ] };
+    key <AD05> { [          t, T            ] };
+    key <AD06> { [          y, Y            ] };
+    key <AD07> { [          u, U            ] };
+    key <AD08> { [          i, I            ] };
+    key <AD09> { [          o, O            ] };
+    key <AD10> { [          p, P            ] };
+    key <I187> { [  parenleft, bracketleft  ] };
+    key <I188> { [ parenright, bracketright ] };
+
+    key <AC01> { [          a, A            ] };
+    key <AC02> { [          s, S            ] };
+    key <AC03> { [          d, D            ] };
+    key <AC04> { [          f, F            ] };
+    key <AC05> { [          g, G            ] };
+    key <AC06> { [          h, H            ] };
+    key <AC07> { [          j, J            ] };
+    key <AC08> { [          k, K            ] };
+    key <AC09> { [          l, L            ] };
+    key <AC10> { [  semicolon, colon        ] };
+    key <AC11> { [ apostrophe, quotedbl     ] };
+
+    key <AB01> { [          z, Z            ] };
+    key <AB02> { [          x, X            ] };
+    key <AB03> { [          c, C            ] };
+    key <AB04> { [          v, V            ] };
+    key <AB05> { [          b, B            ] };
+    key <AB06> { [          n, N            ] };
+    key <AB07> { [          m, M            ] };
+    key <AB08> { [      comma, less         ] };
+    key <AB09> { [     period, greater      ] };
+    key <AB10> { [      slash, question     ] };
+
+};

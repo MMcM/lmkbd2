@@ -138,3 +138,28 @@ a Unicode character code.
 (define-key function-key-map [(alt shift ?a)] [(shift alpha)])
 (define-key function-key-map [(alt ?1)] [#x2603])
 ```
+
+### XKB Support ###
+
+Special escape sequences work with Emacs on different operating
+systems, including Windows and OS X. (XEmacs requires a MULE version.)
+But only while in Emacs. On systems that use the X Keyboard Extension,
+such as Linux, the keyboard mapping can be configured to send Unicode
+for the graphic characters, the Hyper- prefix and unique keysyms for
+all the function keys. These then work with any application.
+
+Key usage codes have been restricted to ones that the HID kernel
+driver maps to evdev events. (Note that there are a few cases, such as
+Cancel and Keypad-colon, where there is an appropriate HID code and a
+corresponding evdev event, but the actual mapping is missing. These,
+too, have been avoided, though a kernel device driver to do the
+additional mappings would probably be trivial.)
+
+The symbol and geometry files should be copied to the corresponding
+system directories, which are someplace like `/usr/share/X11/xkb`. And
+the evdev rules file should be patched to select these for the
+supported keyboard models, `tk`, `space_cadet` and `smbx`.
+
+```bash
+setxkbmap -model space_cadet
+```

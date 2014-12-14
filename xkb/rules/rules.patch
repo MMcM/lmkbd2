@@ -1,0 +1,47 @@
+*** evdev.orig	2014-01-15 09:42:33.000000000 -0500
+--- evdev	2014-12-13 20:43:55.241421358 -0500
+***************
+*** 81,86 ****
+--- 81,88 ----
+                unitekkb1925 yahoo \
+                intelligent_keyboard_k04
+  
++ ! $lispmkbds = tk space_cadet smbx
++ 
+  // all layouts with 3rd and 4th groups
+  ! $threelevellayouts = al az \
+                be br bt \
+***************
+*** 188,193 ****
+--- 190,198 ----
+    sun_type7_usb         =   sun(type7)
+    sun_type7_euro_usb    =   sun(type7tuv)
+    sun_type7_unix_usb    =   sun(type7unix)
++   tk            =       lispm(tk)
++   space_cadet   =       lispm(space_cadet)
++   smbx          =       lispm(smbx)
+    *		=       pc(pc104)
+  
+  ! model		layout		variant		=	symbols
+***************
+*** 357,362 ****
+--- 362,370 ----
+    ws011sh	*			=	pc+sharp_vndr/ws011sh(basic)
+    ws020sh	*			=	pc+sharp_vndr/ws020sh(basic)
+    htcdream	$htcdreamlayouts	=	%l(htcdream)
++   tk            *                       =       lispm(tk)
++   space_cadet   *                       =       lispm(space_cadet)
++   smbx          *                       =       lispm(smbx)
+    *	   	$nonlatin		=	pc+us+%l%(v):2
+    *		*			=	pc+%l%(v)
+  
+***************
+*** 901,906 ****
+--- 909,915 ----
+  ! model		=	symbols
+    $evdevkbds    =   +inet(evdev)+inet(%m)
+    applealu_jis  =   +inet(evdev)+macintosh_vndr/jp(alujiskeys)
++   $lispmkbds    =   +lispm(inet_evdev)
+    *             =   +inet(evdev)
+  
+  ! layout	variant		=	compat
