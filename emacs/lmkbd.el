@@ -77,7 +77,12 @@ Key can be either a key symbol or a character."
               (setq key shifted-keysym)))
         (if (symbolp key)
             (set-character-of-keysym key char))
-        (global-set-key key 'self-insert-command)))))
+        (global-set-key key 'self-insert-command)
+        (if (eq system-type 'linux)
+            ;; Also handle when not in Emacs mode.
+            (let ((evdev-code-key (intern (format "U%04X" code))))
+              (set-character-of-keysym evdev-code-key char)
+              (global-set-key evdev-code-key 'self-insert-command)))))))
 
 )
 
