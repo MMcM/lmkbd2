@@ -1,0 +1,4 @@
+
+# Put this in /etc/udev/rules.d/69-lmkbd.rules to allow access to
+# hidraw by specified group.
+KERNEL=="hidraw*", ATTRS{idVendor}=="23fd", ATTRS{idProduct}=="2069", MODE="660", GROUP="dialout"

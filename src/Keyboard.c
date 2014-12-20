@@ -292,14 +292,13 @@ static bool NonLockingKeyDown(void)
   return false;
 }
 
-static inline uint8_t CurrentModeIndex(void)
+static inline TranslationMode CurrentMode(void)
 {
-  switch (CurrentModeLockMode) {
-  case MODE_LOCK_MODE_NONE:
-    return 0;
-  default:
-    return (CurrentShifts & SHIFT(MODE_LOCK)) ? 1 : 0;
-  }
+  uint8_t index = 0;
+  if ((CurrentModeLockMode != MODE_LOCK_MODE_NONE) &&
+      (CurrentShifts & SHIFT(MODE_LOCK)))
+    index = 1;
+  return CurrentModes[index];
 }
 
 static inline bool sendsKeyUps(void)
@@ -334,12 +333,11 @@ static void LMKBD_Task(void)
   else {
     LEDs_TurnOffLEDs(KEYDOWN_LED);
   }
-  switch (CurrentModeIndex()) {
-  case 0:
-    LEDs_TurnOffLEDs(MODE2_LED);
-    break;
-  default:
+  if (CurrentMode() != DEFAULT_MODE) {
     LEDs_TurnOnLEDs(MODE2_LED);
+  }
+  else {
+    LEDs_TurnOffLEDs(MODE2_LED);
   }
 }
 
@@ -361,7 +359,7 @@ static void KeyDown(/*PROGMEM*/ const KeyInfo *key, bool noKeyUps)
     return;
   }
 
-  switch (CurrentModes[CurrentModeIndex()]) {
+  switch (CurrentMode()) {
   case EMACS:
     if (shift != NONE) {
       CurrentShifts |= SHIFT(shift);

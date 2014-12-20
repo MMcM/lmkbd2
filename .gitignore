@@ -9,3 +9,4 @@ local.mk*
 *.o
 *.sym
 *.elc
+lmkbd-mode
