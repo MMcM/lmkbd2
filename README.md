@@ -17,7 +17,7 @@ encoding protocol or access to an example. Feel free to submit an issue if you d
 want it supported.
 
 Note that the Knight keyboard does not send key up transitions, so
-keyboard autorepeat will need to be disabled in the operating system.
+chording and auto-repeat will not work.
 
 ## Hardware ##
 

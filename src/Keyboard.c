@@ -144,11 +144,11 @@ static EmacsEvent EventBuffers[N_EMACS_EVENTS];
 static uint8_t EmacsBufferIn, EmacsBufferOut;
 static uint8_t EmacsBufferedCount;
 
-static void KeyDown(const KeyInfo *key, bool exclusive);
+static void KeyDown(const KeyInfo *key, bool noKeyUps);
 static void KeyUp(const KeyInfo *key);
 static void CreateEmacsEvent(EmacsEvent *event, uint32_t shifts, PGM_P keysym);
 static void AddEmacsReport(USB_KeyboardReport_Data_t* KeyboardReport);
-static void AddKeyReport(USB_KeyboardReport_Data_t* KeyboardReport, bool shiftOnly);
+static void AddKeyReport(USB_KeyboardReport_Data_t* KeyboardReport);
 static bool IsKeyDown(HidUsageID key);
 
 static void MIT_Init(void);
@@ -292,30 +292,33 @@ static bool NonLockingKeyDown(void)
   return false;
 }
 
-static inline uint8_t CurrentModeIndex(void)
+static inline TranslationMode CurrentMode(void)
 {
-  switch (CurrentModeLockMode) {
-  case MODE_LOCK_MODE_NONE:
-    return 0;
-  default:
-    return (CurrentShifts & SHIFT(MODE_LOCK)) ? 1 : 0;
-  }
+  uint8_t index = 0;
+  if ((CurrentModeLockMode != MODE_LOCK_MODE_NONE) &&
+      (CurrentShifts & SHIFT(MODE_LOCK)))
+    index = 1;
+  return CurrentModes[index];
+}
+
+static inline bool sendsKeyUps(void)
+{
+  return (CurrentKeyboard != TK);
 }
 
 static void LMKBD_Task(void)
 {
-  bool delay = false;
   switch (CurrentKeyboard) {
   case SPACE_CADET:
 #ifdef SPACE_CADET_DIRECT
     SpaceCadetDirect_Scan();
-    break;
+#else
+    MIT_Read(true);
 #endif
-    /* else like TK, but with delay */
-    delay = true;
+    break;
   case TK:
-    if ((TK_PIN & TK_KBDIN) == LOW)
-      MIT_Read(delay);
+    if (!NeedEmptyReport && ((TK_PIN & TK_KBDIN) == LOW)) // Skip while empty pending.
+      MIT_Read(false);
     break;
   case SMBX:
     SMBX_Scan();
@@ -330,26 +333,22 @@ static void LMKBD_Task(void)
   else {
     LEDs_TurnOffLEDs(KEYDOWN_LED);
   }
-  switch (CurrentModeIndex()) {
-  case 0:
-    LEDs_TurnOffLEDs(MODE2_LED);
-    break;
-  default:
+  if (CurrentMode() != DEFAULT_MODE) {
     LEDs_TurnOnLEDs(MODE2_LED);
+  }
+  else {
+    LEDs_TurnOffLEDs(MODE2_LED);
   }
 }
 
-static void KeyDown(/*PROGMEM*/ const KeyInfo *key, bool exclusive)
+static void KeyDown(/*PROGMEM*/ const KeyInfo *key, bool noKeyUps)
 {
   HidUsageID usage = pgm_read_byte(&key->hidUsageID);
   KeyShift shift = pgm_read_byte(&key->shift);
   PGM_P keysym = pgm_read_ptr(&key->keysym);
   uint32_t specialShifts;
 
-  if (exclusive) {
-    if (IsKeyDown(usage)) {
-      NeedEmptyReport = true;
-    }
+  if (noKeyUps) {
     NKeysDown = 0;
   }
 
@@ -360,7 +359,7 @@ static void KeyDown(/*PROGMEM*/ const KeyInfo *key, bool exclusive)
     return;
   }
 
-  switch (CurrentModes[CurrentModeIndex()]) {
+  switch (CurrentMode()) {
   case EMACS:
     if (shift != NONE) {
       CurrentShifts |= SHIFT(shift);
@@ -402,7 +401,7 @@ static void KeyDown(/*PROGMEM*/ const KeyInfo *key, bool exclusive)
       if (shift <= MAX_USB_SHIFT)
         break;                  // No need for usage entry.
     }
-    if (exclusive) {
+    if (noKeyUps) {
 #define MAP_SPECIAL_SHIFT(u,s)          \
         if (CurrentShifts & SHIFT(s)) { \
             KeysDown[NKeysDown++] = u;  \
@@ -678,17 +677,21 @@ static void AddEmacsReport(USB_KeyboardReport_Data_t* KeyboardReport)
         }
         else {
           // Catch up with actual key settings.
-          AddKeyReport(KeyboardReport, false);
+          AddKeyReport(KeyboardReport);
         }
       }
     }
   }
 }
 
-static void AddKeyReport(USB_KeyboardReport_Data_t* KeyboardReport, bool shiftOnly)
+static void AddKeyReport(USB_KeyboardReport_Data_t* KeyboardReport)
 {
+  bool noKeyUps = !sendsKeyUps();
   uint8_t shifts;
   int i;
+
+  // Do not even send shifts; they could be out-of-date until the next key down.
+  if (noKeyUps && (NKeysDown == 0)) return;
 
 #define ADD_SHIFT(m,s)          \
   if (CurrentShifts & SHIFT(s)) \
@@ -705,17 +708,20 @@ static void AddKeyReport(USB_KeyboardReport_Data_t* KeyboardReport, bool shiftOn
   ADD_SHIFT(HID_KEYBOARD_MODIFIER_RIGHTGUI,R_GUI);
   KeyboardReport->Modifier = shifts;
 
-  if (shiftOnly) return;
-
   if (NKeysDown > sizeof(KeyboardReport->KeyCode)) {
     for (i = 0; i < sizeof(KeyboardReport->KeyCode); i++) {
       KeyboardReport->KeyCode[i] = HID_KEYBOARD_SC_ERROR_ROLLOVER;
     }
   }
   else {
-    for (i = 0; i < sizeof(KeyboardReport->KeyCode); i++) {
-      KeyboardReport->KeyCode[i] = (i < NKeysDown) ? KeysDown[i] : 0;
+    for (i = 0; i < NKeysDown; i++) {
+      KeyboardReport->KeyCode[i] = KeysDown[i];
     }
+  }
+
+  if (noKeyUps) {
+    NKeysDown = 0;              // Only sent once.
+    NeedEmptyReport = true;
   }
 }
 
@@ -1727,14 +1733,13 @@ bool CALLBACK_HID_Device_CreateHIDReport(USB_ClassInfo_HID_Device_t* const HIDIn
     {
       USB_KeyboardReport_Data_t* KeyboardReport = (USB_KeyboardReport_Data_t*)ReportData;
       if (NeedEmptyReport) {
-        AddKeyReport(KeyboardReport, true);
         NeedEmptyReport = false;
       }
       else if (EmacsBufferedCount > 0) {
         AddEmacsReport(KeyboardReport);
       }
       else {
-        AddKeyReport(KeyboardReport, false);
+        AddKeyReport(KeyboardReport);
       }
       *ReportSize = sizeof(USB_KeyboardReport_Data_t);
     }
