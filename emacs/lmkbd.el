@@ -316,3 +316,6 @@ Key can be either a keysym symbol or a base character code."
                ((shift scroll) [(meta ?v)])
                ))
   (global-set-key (vector (car key)) (cadr key)))
+
+;; Make C-X <shift-2> consistent no matter which map.
+(define-key function-key-map [?\C-x ?\"] (lookup-key function-key-map [?\C-x ?@]))
