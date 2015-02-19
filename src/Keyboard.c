@@ -93,7 +93,7 @@ typedef struct {
 // As much as possible, keysyms are taken from <gdk/gdkkeysyms.h>,
 // which seems to be the most comprehensive list of X keysyms.
 
-#define KEYSYM(name,keysym) static char name[] PROGMEM = keysym
+#define KEYSYM(name,keysym) static const char name[] PROGMEM = keysym
 #define NO_KEY(idx) { 0, NONE, NULL }
 #define SHIFT_KEY(idx,hid,shift) { hid, shift, NULL }
 #define PC_KEY(idx,hid,keysym) { hid, NONE, keysym }
@@ -769,7 +769,7 @@ KEYSYM(KS_TK_71, ",pi");
 KEYSYM(KS_TK_72, ",forall");
 KEYSYM(KS_TK_73, ",exists");
 
-static KeyInfo TKKeys[64] PROGMEM = {
+static const KeyInfo TKKeys[64] PROGMEM = {
   LISP_KEY(00, HID_KEYBOARD_SC_PAUSE, KS_TK_00), /* break */
   LISP_KEY(01, HID_KEYBOARD_SC_ESCAPE, KS_TK_01), /* esc */
   PC_KEY(02, HID_KEYBOARD_SC_1_AND_EXCLAMATION, NULL), /* 1 ! */
@@ -935,7 +935,7 @@ KEYSYM(KS_SC_173, ",,doubbaselinedot");
 KEYSYM(KS_SC_174, ",,integral");
 KEYSYM(KS_SC_176, "thumbdown,,circleplus");
 
-static KeyInfo SpaceCadetKeys[128] PROGMEM = {
+static const KeyInfo SpaceCadetKeys[128] PROGMEM = {
   NO_KEY(000),
   LISP_KEY(001, HID_KEYBOARD_SC_KEYPAD_2_AND_DOWN_ARROW, KS_SC_001), /* II */
   LISP_KEY(002, HID_KEYBOARD_SC_KEYPAD_4_AND_LEFT_ARROW, KS_SC_002), /* IV */
@@ -1280,7 +1280,7 @@ KEYSYM(KS_SM_165, "clearinput");
 KEYSYM(KS_SM_166, "suspend");
 KEYSYM(KS_SM_167, "resume");
 
-static KeyInfo SMBXKeys[128] PROGMEM = {
+static const KeyInfo SMBXKeys[128] PROGMEM = {
   NO_KEY(000),
   NO_KEY(001),
   LISP_KEY(002, HID_KEYBOARD_SC_F14, KS_SM_002), /* local */
@@ -1496,7 +1496,7 @@ KEYSYM(KS_TI_104, "parenright,bracketleft");
 KEYSYM(KS_TI_114, "abort");
 KEYSYM(KS_TI_134, "line");
 
-static KeyInfo ExplorerKeys[128] PROGMEM = {
+static const KeyInfo ExplorerKeys[128] PROGMEM = {
   NO_KEY(000),
   LISP_KEY(001, HID_KEYBOARD_SC_HELP, NULL), // HELP
   NO_KEY(002),
