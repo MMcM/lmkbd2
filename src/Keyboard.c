@@ -313,7 +313,8 @@ static void LMKBD_Task(void)
 #ifdef SPACE_CADET_DIRECT
     SpaceCadetDirect_Scan();
 #else
-    MIT_Read(true);
+    if ((TK_PIN & TK_KBDIN) == LOW) // Check for start bit.
+      MIT_Read(true);
 #endif
     break;
   case TK:
